@@ -1,0 +1,294 @@
+{% extends 'base.html' %}
+
+{% block title %}Панель HR - PizzaJobs{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stat-card {
+        transition: transform 0.3s;
+    }
+    .stat-card:hover {
+        transform: translateY(-5px);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="fas fa-chart-line me-2 text-danger"></i>Панель HR</h1>
+        <div>
+            <a href="{% url 'create_vacancy' %}" class="btn btn-danger">
+                <i class="fas fa-plus-circle me-2"></i>Создать вакансию
+            </a>
+        </div>
+    </div>
+    
+    <!-- Статистика вакансий -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="card bg-danger text-white stat-card h-100 shadow">
+                <div class="card-body text-center">
+                    <h3 class="display-4">{{ total_vacancies }}</h3>
+                    <p class="mb-0">Всего вакансий</p>
+                </div>
+                <div class="card-footer bg-danger-dark d-flex justify-content-between align-items-center">
+                    <span>Управление</span>
+                    <a href="{% url 'manage_vacancies' %}" class="text-white">
+                        <i class="fas fa-arrow-circle-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-3">
+            <div class="card bg-success text-white stat-card h-100 shadow">
+                <div class="card-body text-center">
+                    <h3 class="display-4">{{ active_vacancies }}</h3>
+                    <p class="mb-0">Активные вакансии</p>
+                </div>
+                <div class="card-footer bg-success-dark d-flex justify-content-between align-items-center">
+                    <span>Просмотр</span>
+                    <a href="{% url 'manage_vacancies' %}?status=active" class="text-white">
+                        <i class="fas fa-arrow-circle-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-3">
+            <div class="card bg-primary text-white stat-card h-100 shadow">
+                <div class="card-body text-center">
+                    <h3 class="display-4">{{ total_applications }}</h3>
+                    <p class="mb-0">Всего откликов</p>
+                </div>
+                <div class="card-footer bg-primary-dark d-flex justify-content-between align-items-center">
+                    <span>Просмотр откликов</span>
+                    <a href="{% url 'application_list' %}" class="text-white">
+                        <i class="fas fa-arrow-circle-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-3">
+            <div class="card bg-warning text-dark stat-card h-100 shadow">
+                <div class="card-body text-center">
+                    <h3 class="display-4">{{ new_applications }}</h3>
+                    <p class="mb-0">Новые отклики</p>
+                </div>
+                <div class="card-footer bg-warning-dark d-flex justify-content-between align-items-center">
+                    <span>Обработка</span>
+                    <a href="{% url 'application_list' %}?status=NEW" class="text-dark">
+                        <i class="fas fa-arrow-circle-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <!-- Недавние отклики -->
+        <div class="col-lg-7 mb-4">
+            <div class="card shadow">
+                <div class="card-header bg-white">
+                    <h3 class="card-title h5 mb-0">Недавние отклики</h3>
+                </div>
+                <div class="card-body">
+                    {% if recent_applications %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Имя</th>
+                                        <th>Должность</th>
+                                        <th>Дата отклика</th>
+                                        <th>Статус</th>
+                                        <th>Действия</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for application in recent_applications %}
+                                        <tr>
+                                            <td>{{ application.user.get_full_name }}</td>
+                                            <td>{{ application.vacancy.title }}</td>
+                                            <td>{{ application.applied_at|date:"d M, Y" }}</td>
+                                            <td>
+                                                <span class="badge {% if application.status == 'NEW' %}bg-primary{% elif application.status == 'REVIEWING' %}bg-info{% elif application.status == 'INTERVIEW_SCHEDULED' %}bg-warning{% elif application.status == 'ACCEPTED' %}bg-success{% elif application.status == 'REJECTED' %}bg-danger{% else %}bg-secondary{% endif %}">
+                                                    {{ application.get_status_display }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <a href="{% url 'application_detail' application.id %}" class="btn btn-sm btn-outline-secondary">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="text-center mt-3">
+                            <a href="{% url 'application_list' %}" class="btn btn-sm btn-outline-secondary">
+                                Просмотреть все отклики
+                            </a>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>Нет недавних откликов для отображения.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Графики и статистика -->
+        <div class="col-lg-5 mb-4">
+            <div class="card shadow mb-4">
+                <div class="card-header bg-white">
+                    <h3 class="card-title h5 mb-0">Отклики по статусу</h3>
+                </div>
+                <div class="card-body">
+                    {% if applications_by_status %}
+                        <div class="chart-container" style="position: relative; height:250px; width:100%">
+                            <canvas id="applicationStatusChart"></canvas>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>Нет данных для отображения.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="card shadow">
+                <div class="card-header bg-white">
+                    <h3 class="card-title h5 mb-0">Вакансии по статусу</h3>
+                </div>
+                <div class="card-body">
+                    {% if vacancies_by_status %}
+                        <div class="chart-container" style="position: relative; height:250px; width:100%">
+                            <canvas id="vacancyStatusChart"></canvas>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>Нет данных для отображения.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Предстоящие собеседования -->
+    <div class="card shadow mb-4">
+        <div class="card-header bg-white">
+            <h3 class="card-title h5 mb-0">Предстоящие собеседования</h3>
+        </div>
+        <div class="card-body">
+        {% if interviews_scheduled %}
+            
+        <i class="fas fa-calendar-alt me-2"></i>Запланировано <strong>{{ interviews_scheduled }}</strong> собеседований. Проверьте отклики для подробностей.
+        
+    {% else %}
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle me-2"></i>Нет предстоящих собеседований.
+        </div>
+    {% endif %}
+
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Chart.js для визуализации данных -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Общая конфигурация статусов: код -> {label, bootstrapClass, цвет}
+    const statusConfig = {
+        'NEW':                 { label: 'Новые',                   badge: 'bg-primary',      color: 'rgba(13, 110, 253, 0.7)' },
+        'REVIEWING':           { label: 'На рассмотрении',          badge: 'bg-info',         color: 'rgba(13, 202, 240, 0.7)' },
+        'INTERVIEW_SCHEDULED': { label: 'Собеседование назначено',   badge: 'bg-warning text-dark', color: 'rgba(255, 193, 7, 0.7)' },
+        'ACCEPTED':            { label: 'Приняты',                  badge: 'bg-success',      color: 'rgba(25, 135, 84, 0.7)' },
+        'REJECTED':            { label: 'Отклонены',                badge: 'bg-danger',       color: 'rgba(220, 53, 69, 0.7)' }
+    };
+
+    // --- Диаграмма: Отклики по статусу ---
+    {% if applications_by_status %}
+    // Собираем динамические массивы
+    const statusLabels = [], statusData = [], statusColors = [];
+
+    {% for item in applications_by_status %}
+        (function(){
+            const code  = "{{ item.status }}";
+            const count = {{ item.count }};
+            const cfg   = statusConfig[code] || { label: code, badge: 'bg-secondary', color: 'rgba(108, 117, 125, 0.7)' };
+            statusLabels.push(cfg.label);
+            statusData.push(count);
+            statusColors.push(cfg.color);
+        })();
+    {% endfor %}
+
+    const ctx = document.getElementById('applicationStatusChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: statusLabels,
+            datasets: [{
+                data: statusData,
+                backgroundColor: statusColors,
+                borderColor: statusColors.map(c => c.replace('0.7','1')),
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'right', labels:{ boxWidth:15 } }
+            }
+        }
+    });
+    {% endif %}
+
+    // --- Диаграмма: Вакансии по статусу (без изменений) ---
+    {% if vacancies_by_status %}
+    const vacancyCtx = document.getElementById('vacancyStatusChart').getContext('2d');
+    const vacancyData = {
+        labels: ['Активные','Неактивные'],
+        datasets: [{
+            data: [
+                {% for item in vacancies_by_status %}
+                    {% if item.is_active %}{{ item.count }},{% endif %}
+                {% endfor %}
+                {% for item in vacancies_by_status %}
+                    {% if not item.is_active %}{{ item.count }},{% endif %}
+                {% endfor %}
+            ],
+            backgroundColor: [
+                'rgba(25, 135, 84, 0.7)',   // Активные — зелёный (bg-success)
+                'rgba(220, 53, 69, 0.7)'    // Неактивные — красный (bg-danger)
+            ],
+            borderColor: [
+                'rgba(25, 135, 84, 1)',
+                'rgba(220, 53, 69, 1)'
+            ],
+            borderWidth: 1
+        }]
+    };
+    new Chart(vacancyCtx, {
+        type: 'doughnut',
+        data: vacancyData,
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend:{ position:'right', labels:{ boxWidth:15 } } }
+        }
+    });
+    {% endif %}
+});
+</script>
+{% endblock %}
+

@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Загрузить резюме - PizzaJobs{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-lg-3">
+            <!-- Боковая навигация -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">Мой аккаунт</h5>
+                </div>
+                <div class="list-group list-group-flush">
+                    <a href="{% url 'view_profile' %}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-user me-2"></i>Просмотреть профиль
+                    </a>
+                    <a href="{% url 'edit_profile' %}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-edit me-2"></i>Редактировать профиль
+                    </a>
+                    <a href="{% url 'application_list' %}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-clipboard-list me-2"></i>Мои отклики
+                    </a>
+                    <a href="{% url 'upload_resume' %}" class="list-group-item list-group-item-action active">
+                        <i class="fas fa-file-upload me-2"></i>Загрузить резюме
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-9">
+            <div class="card shadow">
+                <div class="card-header bg-white">
+                    <h2 class="card-title h4 mb-0">Загрузить резюме</h2>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info mb-4">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Поддерживаемые форматы:</strong> PDF (.pdf), Microsoft Word (.doc, .docx)<br>
+                        <strong>Максимальный размер файла:</strong> 5 МБ
+                    </div>
+                    
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        
+                        <div class="mb-4">
+                            {{ form.title|as_crispy_field }}
+                            <small class="text-muted">Дайте резюме описательное название, чтобы позже легко его найти.</small>
+                        </div>
+                        
+                        <div class="mb-4">
+                            {{ form.file|as_crispy_field }}
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-cloud-upload-alt me-2"></i>Загрузить резюме
+                            </button>
+                            <a href="{% url 'view_profile' %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Назад к профилю
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <div class="card shadow-sm mt-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Советы по резюме</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6><i class="fas fa-check-circle text-success me-2"></i>Рекомендации по составлению резюме</h6>
+                            <ul>
+                                <li>Держите резюме на 1–2 страницах</li>
+                                <li>Используйте чёткий и лаконичный язык</li>
+                                <li>Выделяйте релевантный опыт и навыки</li>
+                                <li>По возможности приводите количественные достижения</li>
+                                <li>Убедитесь, что контактная информация актуальна</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6><i class="fas fa-exclamation-circle text-danger me-2"></i>Чего избегать</h6>
+                            <ul>
+                                <li>Опечатки и грамматические ошибки</li>
+                                <li>Использования шаблонов без доработки</li>
+                                <li>Указания нерелевантной личной информации</li>
+                                <li>Перечисления обязанностей без достижений</li>
+                                <li>Сложного или трудно читаемого оформления</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,294 @@
+/* Main CSS for PizzaJobs Application */
+
+/* Color variables */
+:root {
+    --pizza-red: #dc3545;
+    --pizza-green: #198754;
+    --pizza-white: #ffffff;
+    --pizza-light: #f8f9fa;
+    --pizza-dark: #212529;
+    --pizza-secondary: #6c757d;
+}
+
+/* Body and general styles */
+body {
+    font-family: 'Roboto', 'Segoe UI', Arial, sans-serif;
+    color: var(--pizza-dark);
+    background-color: #f5f5f5;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+main {
+    flex: 1;
+}
+
+/* Custom background colors */
+.bg-danger-dark {
+    background-color: #bb2d3b;
+}
+
+.bg-success-dark {
+    background-color: #157347;
+}
+
+.bg-primary-dark {
+    background-color: #0a58ca;
+}
+
+.bg-warning-dark {
+    background-color: #e0a800;
+}
+
+/* Button hover effects */
+.btn-danger:hover {
+    background-color: #bb2d3b;
+    border-color: #b02a37;
+}
+
+.btn-outline-danger:hover {
+    background-color: #dc3545;
+    color: white;
+}
+
+/* Card styles */
+.card {
+    border-radius: 0.5rem;
+    border: none;
+    overflow: hidden;
+}
+
+.card-header {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.card-footer {
+    border-top: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.card-header.bg-white {
+    background-color: white;
+}
+
+.card.shadow {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075) !important;
+}
+
+.card.shadow-sm {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Navigation */
+.navbar-dark.bg-danger {
+    background-color: var(--pizza-red) !important;
+}
+
+.nav-link {
+    font-weight: 500;
+}
+
+.navbar-brand {
+    font-weight: 700;
+}
+
+/* Footer */
+.footer {
+    background-color: var(--pizza-light);
+    padding: 2rem 0;
+    margin-top: auto;
+}
+
+/* Form styling */
+.form-control:focus {
+    border-color: #dc3545;
+    box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.25);
+}
+
+.form-check-input:checked {
+    background-color: #dc3545;
+    border-color: #dc3545;
+}
+
+.form-select:focus {
+    border-color: #dc3545;
+    box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.25);
+}
+
+/* Badges */
+.badge {
+    font-weight: 500;
+    padding: 0.35em 0.65em;
+}
+
+/* Tables */
+.table {
+    margin-bottom: 0;
+}
+
+.table > :not(caption) > * > * {
+    padding: 0.75rem;
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+/* Image styling for team section */
+.card-img-top, .card img {
+    object-fit: cover;
+}
+
+/* Pagination */
+.page-link {
+    color: var(--pizza-red);
+}
+
+.page-item.active .page-link {
+    background-color: var(--pizza-red);
+    border-color: var(--pizza-red);
+}
+
+.page-link:hover {
+    color: #a52834;
+}
+
+/* Stats/counting animation */
+@keyframes countUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.display-4 {
+    animation: countUp 1s ease-out;
+}
+
+/* Alerts */
+.alert {
+    border-radius: 0.5rem;
+    border: none;
+}
+
+/* Custom styling for vacancy cards */
+.vacancy-card {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.vacancy-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Comments styling */
+.comments-list .comment {
+    padding: 1rem;
+    transition: background-color 0.2s;
+}
+
+.comments-list .comment:hover {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+/* Responsive adjustments */
+@media (max-width: 767.98px) {
+    .display-4 {
+        font-size: 2.5rem;
+    }
+    
+    h1 {
+        font-size: 1.8rem;
+    }
+    
+    h2 {
+        font-size: 1.5rem;
+    }
+}
+
+/* Status badges */
+.badge.bg-primary {
+    background-color: #0d6efd !important;
+}
+
+.badge.bg-info {
+    background-color: #0dcaf0 !important;
+}
+
+.badge.bg-warning {
+    background-color: #ffc107 !important;
+}
+
+.badge.bg-success {
+    background-color: #198754 !important;
+}
+
+.badge.bg-danger {
+    background-color: #dc3545 !important;
+}
+
+.badge.bg-secondary {
+    background-color: #6c757d !important;
+}
+
+/* Animation for notifications */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.dropdown-menu.show {
+    animation: fadeIn 0.3s;
+}
+
+/* Home page specific styles */
+.hero-section {
+    background-color: rgba(255, 255, 255, 0.9);
+    border-radius: 1rem;
+    padding: 2rem;
+}
+
+.section-heading {
+    position: relative;
+    padding-bottom: 0.5rem;
+}
+
+.section-heading::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 50px;
+    height: 3px;
+    background-color: var(--pizza-red);
+}
+
+/* Focus states for accessibility */
+a:focus, button:focus, input:focus, select:focus, textarea:focus {
+    outline: 2px solid rgba(220, 53, 69, 0.5);
+    outline-offset: 2px;
+}
+
+/* Print styles */
+@media print {
+    .no-print {
+        display: none !important;
+    }
+    
+    .card {
+        border: 1px solid #dee2e6 !important;
+        box-shadow: none !important;
+    }
+    
+    body {
+        background-color: white !important;
+    }
+}

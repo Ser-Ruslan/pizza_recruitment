@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Редактировать профиль - PizzaJobs{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-lg-3">
+            <!-- Боковая навигация -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">Мой аккаунт</h5>
+                </div>
+                <div class="list-group list-group-flush">
+                    <a href="{% url 'view_profile' %}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-user me-2"></i>Просмотреть профиль
+                    </a>
+                    <a href="{% url 'edit_profile' %}" class="list-group-item list-group-item-action active">
+                        <i class="fas fa-edit me-2"></i>Редактировать профиль
+                    </a>
+                    <a href="{% url 'application_list' %}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-clipboard-list me-2"></i>Мои отклики
+                    </a>
+                    {% if user.profile.role == 'CANDIDATE' %}
+                        <a href="{% url 'upload_resume' %}" class="list-group-item list-group-item-action">
+                            <i class="fas fa-file-upload me-2"></i>Загрузить резюме
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-9">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <h2 class="card-title h4 mb-0">Редактировать профиль</h2>
+                </div>
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Имя пользователя</label>
+                                    <input type="text" class="form-control" value="{{ user.username }}" readonly>
+                                    <div class="form-text text-muted">Имя пользователя нельзя изменить</div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label">Email</label>
+                                    <input type="email" class="form-control" value="{{ user.email }}" readonly>
+                                    <div class="form-text text-muted">Для изменения email свяжитесь с администратором</div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label">Полное имя</label>
+                                    <input type="text" class="form-control" value="{{ user.get_full_name }}" readonly>
+                                    <div class="form-text text-muted">Для изменения имени свяжитесь с администратором</div>
+                                </div>
+                                
+                                {{ form.phone|as_crispy_field }}
+                                {{ form.city|as_crispy_field }}
+                            </div>
+                            
+                            <div class="col-md-6">
+                                {% if user.profile.role == 'CANDIDATE' %}
+                                    {{ form.desired_position|as_crispy_field }}
+                                    {{ form.experience|as_crispy_field }}
+                                    {{ form.education|as_crispy_field }}
+                                {% endif %}
+                                
+                                {{ form.photo|as_crispy_field }}
+                                {{ form.about|as_crispy_field }}
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2 mt-4">
+                            <button type="submit" class="btn btn-danger">Сохранить изменения</button>
+                            <a href="{% url 'view_profile' %}" class="btn btn-outline-secondary">Отмена</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

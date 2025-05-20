@@ -1,0 +1,139 @@
+{% extends 'base.html' %}
+
+{% block title %}Вакансии - PizzaJobs{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mb-4">Актуальные вакансии</h1>
+    
+    <!-- Filters -->
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-light">
+            <h5 class="mb-0"><i class="fas fa-filter me-2"></i>Фильтр вакансий</h5>
+        </div>
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-4">
+                    <label for="city" class="form-label">Город</label>
+                    <select class="form-select" id="city" name="city">
+                        <option value="">Все города</option>
+                        {% for city in cities %}
+                            <option value="{{ city }}" {% if selected_city == city %}selected{% endif %}>{{ city }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="position_type" class="form-label">Тип должности</label>
+                    <select class="form-select" id="position_type" name="position_type">
+                        <option value="">Все должности</option>
+                        {% for position in position_types %}
+                            <option value="{{ position.title }}" {% if selected_position_type == position.title %}selected{% endif %}>{{ position.title }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="restaurant" class="form-label">Пиццерия</label>
+                    <select class="form-select" id="restaurant" name="restaurant">
+                        <option value="">Все пиццерии</option>
+                        {% for restaurant in restaurants %}
+                            <option value="{{ restaurant.id }}" {% if selected_restaurant == restaurant.id|stringformat:"i" %}selected{% endif %}>{{ restaurant.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary">Применить фильтры</button>
+                    <a href="{% url 'vacancy_list' %}" class="btn btn-secondary">Очистить фильтры</a>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Vacancies List -->
+    {% if page_obj %}
+        <div class="row row-cols-1 row-cols-md-2 g-4">
+            {% for vacancy in page_obj %}
+                <div class="col">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-header bg-white">
+                            <h5 class="card-title mb-0">{{ vacancy.title }}</h5>
+                            <h6 class="card-subtitle text-muted mt-1">{{ vacancy.position_type.title }}</h6>
+                        </div>
+                        <div class="card-body">
+                            <p class="card-text">{{ vacancy.description|truncatewords:30 }}</p>
+                            <div class="d-flex flex-wrap mb-2">
+                                {% for restaurant in vacancy.restaurants.all %}
+                                    <span class="badge bg-secondary me-1 mb-1">{{ restaurant.city }}</span>
+                                {% endfor %}
+                            </div>
+                            <div class="mb-2">
+                                <small class="text-muted">
+                                    Откликнулись: {{ vacancy.total_applications }} чел.
+                                    {% if vacancy.total_applications > 0 %}
+                                        | Принято: {{ vacancy.acceptance_rate }}%
+                                    {% endif %}
+                                </small>
+                            </div>
+                            {% if vacancy.salary_min or vacancy.salary_max %}
+                                <p class="mt-2">
+                                    <strong>Зарплата: </strong>
+                                    {% if vacancy.salary_min and vacancy.salary_max %}
+                                        {{ vacancy.salary_min }} - {{ vacancy.salary_max }} ₽
+                                    {% elif vacancy.salary_min %}
+                                        От {{ vacancy.salary_min }} ₽
+                                    {% elif vacancy.salary_max %}
+                                        До {{ vacancy.salary_max }} ₽
+                                    {% endif %}
+                                </p>
+                            {% endif %}
+                        </div>
+                        <div class="card-footer bg-white">
+                            <a href="{% url 'vacancy_detail' vacancy.id %}" class="btn btn-outline-danger">Подробнее</a>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+        
+        <!-- Pagination -->
+        {% if page_obj.paginator.num_pages > 1 %}
+            <nav class="mt-4">
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page=1{% if selected_city %}&city={{ selected_city }}{% endif %}{% if selected_position_type %}&position_type={{ selected_position_type }}{% endif %}{% if selected_restaurant %}&restaurant={{ selected_restaurant }}{% endif %}">Первая</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if selected_city %}&city={{ selected_city }}{% endif %}{% if selected_position_type %}&position_type={{ selected_position_type }}{% endif %}{% if selected_restaurant %}&restaurant={{ selected_restaurant }}{% endif %}">Предыдущая</a>
+                        </li>
+                    {% endif %}
+                    
+                    {% for num in page_obj.paginator.page_range %}
+                        {% if page_obj.number == num %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ num }}</span>
+                            </li>
+                        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ num }}{% if selected_city %}&city={{ selected_city }}{% endif %}{% if selected_position_type %}&position_type={{ selected_position_type }}{% endif %}{% if selected_restaurant %}&restaurant={{ selected_restaurant }}{% endif %}">{{ num }}</a>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if selected_city %}&city={{ selected_city }}{% endif %}{% if selected_position_type %}&position_type={{ selected_position_type }}{% endif %}{% if selected_restaurant %}&restaurant={{ selected_restaurant }}{% endif %}">Следующая</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if selected_city %}&city={{ selected_city }}{% endif %}{% if selected_position_type %}&position_type={{ selected_position_type }}{% endif %}{% if selected_restaurant %}&restaurant={{ selected_restaurant }}{% endif %}">Последняя</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        {% endif %}
+    {% else %}
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle me-2"></i>Не найдено вакансий, соответствующих вашим критериям. Пожалуйста, попробуйте другие фильтры или проверьте позже.
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

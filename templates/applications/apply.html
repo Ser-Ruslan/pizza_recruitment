@@ -1,0 +1,133 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Отклик на {{ vacancy.title }} – PizzaJobs{% endblock %}
+
+{% block content %}
+<div class="container">
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'vacancy_list' %}">Вакансии</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'vacancy_detail' vacancy.id %}">{{ vacancy.title }}</a></li>
+            <li class="breadcrumb-item active">Отклик</li>
+        </ol>
+    </nav>
+    
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card shadow">
+                <div class="card-header bg-white">
+                    <h1 class="h3 mb-0">Отклик на {{ vacancy.title }}</h1>
+                </div>
+                <div class="card-body">
+                    <div class="mb-4">
+                        <h5>Детали позиции</h5>
+                        <div class="card bg-light mb-3">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <p><strong>Должность:</strong> {{ vacancy.title }}</p>
+                                        <p><strong>Тип:</strong> {{ vacancy.position_type.title }}</p>
+                                        <p>
+                                            <strong>Рестораны:</strong>
+                                            {% for restaurant in vacancy.restaurants.all %}
+                                                {{ restaurant.name }}{% if not forloop.last %}, {% endif %}
+                                            {% endfor %}
+                                        </p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <p>
+                                            <strong>Зарплата:</strong>
+                                            {% if vacancy.salary_min and vacancy.salary_max %}
+                                                ${{ vacancy.salary_min }} – ${{ vacancy.salary_max }}
+                                            {% elif vacancy.salary_min %}
+                                                От ${{ vacancy.salary_min }}
+                                            {% elif vacancy.salary_max %}
+                                                До ${{ vacancy.salary_max }}
+                                            {% else %}
+                                                Не указана
+                                            {% endif %}
+                                        </p>
+                                        <p><strong>Опубликовано:</strong> {{ vacancy.created_at|date:"j F Y" }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="mb-4">
+                            <h5>Выберите резюме</h5>
+                            {{ form.resume|as_crispy_field }}
+                            <div class="text-muted small">
+                                <i class="fas fa-info-circle me-1"></i>Нет резюме? <a href="{% url 'upload_resume' %}">Загрузите его сейчас</a>.
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <h5>Сопроводительное письмо (необязательно)</h5>
+                            {{ form.cover_letter|as_crispy_field }}
+                            <div class="text-muted small">
+                                <i class="fas fa-lightbulb me-1"></i>Совет: объясните, почему вам интересна эта позиция и как ваш опыт делает вас отличным кандидатом.
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>Отправляя заявку, вы делитесь информацией из своего профиля с нашей HR-командой и менеджерами ресторанов.
+                        </div>
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'vacancy_detail' vacancy.id %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Назад к вакансии
+                            </a>
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-paper-plane me-2"></i>Отправить заявку
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <div class="card mt-4 shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Этапы процесса</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 text-center">
+                            <div class="rounded-circle bg-danger text-white d-flex align-items-center justify-content-center mx-auto mb-3" style="width: 80px; height: 80px;">
+                                <i class="fas fa-paper-plane fa-2x"></i>
+                            </div>
+                            <h6>1. Отклик</h6>
+                            <p class="small">Отправьте заявку и резюме</p>
+                        </div>
+                        <div class="col-md-3 text-center">
+                            <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center mx-auto mb-3" style="width: 80px; height: 80px;">
+                                <i class="fas fa-search fa-2x"></i>
+                            </div>
+                            <h6>2. Рассмотрение</h6>
+                            <p class="small">Наша HR-команда изучит вашу заявку</p>
+                        </div>
+                        <div class="col-md-3 text-center">
+                            <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center mx-auto mb-3" style="width: 80px; height: 80px;">
+                                <i class="fas fa-comments fa-2x"></i>
+                            </div>
+                            <h6>3. Собеседование</h6>
+                            <p class="small">Отобранных кандидатов приглашают на собеседование</p>
+                        </div>
+                        <div class="col-md-3 text-center">
+                            <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center mx-auto mb-3" style="width: 80px; height: 80px;">
+                                <i class="fas fa-handshake fa-2x"></i>
+                            </div>
+                            <h6>4. Решение</h6>
+                            <p class="small">Принимается окончательное решение о найме</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

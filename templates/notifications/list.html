@@ -1,0 +1,132 @@
+{# templates/notifications/list.html #}
+{% extends 'base.html' %}
+
+{% block title %}Уведомления – PizzaJobs{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="fas fa-bell me-2 text-danger"></i>Уведомления</h1>
+
+        {% if unread_count > 0 %}
+        <form method="post" action="{% url 'notifications' %}">
+            {% csrf_token %}
+            <button type="submit" name="mark_all_read" value="1" class="btn btn-outline-secondary">
+                <i class="fas fa-check-double me-2"></i>Отметить все как прочитанные
+            </button>
+        </form>
+        {% endif %}
+    </div>
+    
+    <!-- Список уведомлений -->
+    <div class="card shadow">
+        <div class="card-body">
+            {% if page_obj %}
+                <div class="list-group">
+                    {% for notification in page_obj %}
+                        <div class="list-group-item list-group-item-action
+                                    {% if not notification.read %}fw-bold bg-light{% else %}bg-white text-muted{% endif %}">
+                            <div class="d-flex w-100 justify-content-between align-items-center">
+                                <h5 class="mb-1">
+                                    {% if not notification.read %}
+                                        <span class="badge rounded-pill bg-danger me-2">Новое</span>
+                                    {% endif %}
+                                    {{ notification.title }}
+                                </h5>
+                                <small class="text-muted">
+                                    {{ notification.created_at|date:"d.m.Y, H:i" }}
+                                </small>
+                            </div>
+                            <p class="mb-1">{{ notification.message }}</p>
+                            <div class="d-flex justify-content-end gap-2">
+                                {% if not notification.read %}
+                                    <form method="post" action="{% url 'notifications' %}" class="d-inline">
+                                        {% csrf_token %}
+                                        <button type="submit" name="mark_read" value="{{ notification.id }}"
+                                                class="btn btn-sm btn-outline-secondary">
+                                            <i class="fas fa-check me-1"></i>Отметить как прочитанное
+                                        </button>
+                                    </form>
+                                {% endif %}
+                                <form method="post" action="{% url 'notifications' %}" class="d-inline">
+                                    {% csrf_token %}
+                                    <button type="submit" name="delete" value="{{ notification.id }}"
+                                            class="btn btn-sm btn-outline-danger">
+                                        <i class="fas fa-trash me-1"></i>Удалить
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+                
+                <!-- Пагинация -->
+                {% if page_obj.paginator.num_pages > 1 %}
+                    <nav class="mt-4">
+                        <ul class="pagination justify-content-center">
+                            {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=1">Первая</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Предыдущая</a>
+                                </li>
+                            {% endif %}
+                            
+                            {% for num in page_obj.paginator.page_range %}
+                                {% if page_obj.number == num %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ num }}</span>
+                                    </li>
+                                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}">Следующая</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Последняя</a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                {% endif %}
+            {% else %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>У вас пока нет уведомлений.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Настройки уведомлений -->
+    <div class="card shadow-sm mt-4">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">Информация об уведомлениях</h5>
+        </div>
+        <div class="card-body">
+            <p>Вы будете получать уведомления о:</p>
+            <ul>
+                {% if user.profile.role == 'CANDIDATE' %}
+                    <li>Обновлениях статуса ваших откликов</li>
+                    <li>Назначении собеседований</li>
+                    <li>Новых вакансиях, соответствующих вашему профилю</li>
+                {% elif user.profile.role == 'HR_MANAGER' %}
+                    <li>Новых откликах на открытые вакансии</li>
+                    <li>Подтверждениях собеседований</li>
+                    <li>Изменениях статуса откликов со стороны менеджеров ресторанов</li>
+                {% elif user.profile.role == 'RESTAURANT_MANAGER' %}
+                    <li>Новых откликах на вакансии вашего ресторана</li>
+                    <li>Назначениях собеседований</li>
+                    <li>Изменениях статуса откликов со стороны HR</li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}

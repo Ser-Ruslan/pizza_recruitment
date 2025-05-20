@@ -1,0 +1,181 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ vacancy.title }} - PizzaJobs{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-lg-8">
+            <!-- Vacancy Details -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-white">
+                    <h1 class="card-title h3 mb-0">{{ vacancy.title }}</h1>
+                    <p class="text-muted mb-0">{{ vacancy.position_type.title }}</p>
+                </div>
+                <div class="card-body">
+                <div class="mb-4">
+                    <h5>Статистика откликов</h5>
+                    <p>
+                        <strong>Откликнулись:</strong> {{ total_applications }} человек
+                        {% if total_applications > 0 %}
+                            &nbsp;|&nbsp;
+                            <strong>Процент принятия:</strong> {{ acceptance_rate }}%
+                        {% endif %}
+                    </p>
+                </div>
+
+                    <div class="mb-4">
+                        <h5>пиццерии</h5>
+                        <div class="d-flex flex-wrap">
+                            {% for restaurant in vacancy.restaurants.all %}
+                                <div class="badge bg-light text-dark me-2 mb-2 p-2">
+                                    <i class="fas fa-map-marker-alt text-danger me-1"></i>
+                                    {{ restaurant.name }}, {{ restaurant.city }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h5>Описание</h5>
+                        <p>{{ vacancy.description|linebreaks }}</p>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h5>Требования</h5>
+                        <p>{{ vacancy.requirements|linebreaks }}</p>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h5>Обязанности</h5>
+                        <p>{{ vacancy.responsibilities|linebreaks }}</p>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h5>Условия работы</h5>
+                        <p>{{ vacancy.conditions|linebreaks }}</p>
+                    </div>
+                    
+                    {% if vacancy.salary_min or vacancy.salary_max %}
+                        <div class="mb-4">
+                            <h5>Зарплата</h5>
+                            <p>
+                                {% if vacancy.salary_min and vacancy.salary_max %}
+                                    {{ vacancy.salary_min }} - {{ vacancy.salary_max }} ₽
+                                {% elif vacancy.salary_min %}
+                                    От {{ vacancy.salary_min }} ₽
+                                {% elif vacancy.salary_max %}
+                                    До {{ vacancy.salary_max }} ₽
+                                {% endif %}
+                            </p>
+                        </div>
+                    {% endif %}
+                    
+                    <div class="d-grid gap-2">
+                        {% if user.is_authenticated %}
+                            {% if user.profile.role == 'CANDIDATE' %}
+                                {% if user_applied %}
+                                    <button class="btn btn-secondary" disabled>
+                                        <i class="fas fa-check me-2"></i>Вы уже подали заявку
+                                    </button>
+                                {% else %}
+                                    <a href="{% url 'apply_for_vacancy' vacancy.id %}" class="btn btn-danger">
+                                        <i class="fas fa-paper-plane me-2"></i>Подать заявку
+                                    </a>
+                                {% endif %}
+                            {% endif %}
+                        {% else %}
+                            <a href="{% url 'login' %}?next={% url 'apply_for_vacancy' vacancy.id %}" class="btn btn-danger">
+                                <i class="fas fa-sign-in-alt me-2"></i>Войдите, чтобы подать заявку
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="card-footer bg-white text-muted">
+                    <small>Опубликовано: {{ vacancy.created_at|date:"j F Y" }}</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <!-- Similar Vacancies Sidebar -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Похожие вакансии</h5>
+                </div>
+                <div class="card-body">
+                    {% with similar_vacancies=vacancy.position_type.vacancies.all|slice:":5" %}
+                        {% if similar_vacancies %}
+                            <ul class="list-group list-group-flush">
+                                {% for similar in similar_vacancies %}
+                                    {% if similar.id != vacancy.id and similar.is_active %}
+                                        <li class="list-group-item">
+                                            <a href="{% url 'vacancy_detail' similar.id %}" class="text-decoration-none">
+                                                {{ similar.title }}
+                                            </a>
+                                            <div class="small text-muted">
+                                                {% if similar.restaurants.count == 1 %}
+                                                    {{ similar.restaurants.first.city }}
+                                                {% else %}
+                                                    Несколько локаций
+                                                {% endif %}
+                                            </div>
+                                        </li>
+                                    {% endif %}
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            <p class="text-muted">Нет похожих вакансий.</p>
+                        {% endif %}
+                    {% endwith %}
+                </div>
+            </div>
+            
+            <!-- Application Process Card -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Процесс подачи заявки</h5>
+                </div>
+                <div class="card-body">
+                    <ol class="ps-3">
+                        <li class="mb-2">Подайте заявку онлайн, загрузив резюме и сопроводительное письмо</li>
+                        <li class="mb-2">Наша HR-команда рассмотрит вашу заявку</li>
+                        <li class="mb-2">Если вы будете выбраны, вас пригласят на собеседование</li>
+                        <li class="mb-2">Окончательное решение будет принято после собеседования</li>
+                    </ol>
+                    <div class="text-center mt-3">
+                        {% if user.is_authenticated %}
+                            {% if user.profile.role == 'CANDIDATE' %}
+                                {% if not user_applied %}
+                                    <a href="{% url 'apply_for_vacancy' vacancy.id %}" class="btn btn-sm btn-outline-danger">
+                                        Подать заявку
+                                    </a>
+                                {% endif %}
+                            {% endif %}
+                        {% else %}
+                            <a href="{% url 'register' %}" class="btn btn-sm btn-outline-danger">
+                                Зарегистрироваться и подать заявку
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Contact Card -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Есть вопросы?</h5>
+                </div>
+                <div class="card-body">
+                    <p>Если у вас есть вопросы по этой вакансии или процессу подачи заявки, свяжитесь с нашей HR-командой.</p>
+                    <div class="d-grid">
+                        <a href="mailto:careers@pizzajobs.com" class="btn btn-sm btn-outline-secondary">
+                            <i class="fas fa-envelope me-2"></i>careers@pizzajobs.com
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

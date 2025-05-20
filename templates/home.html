@@ -1,0 +1,244 @@
+{% extends 'base.html' %}
+
+{% load static %}
+
+{% block title %}PizzaJobs - Присоединяйтесь к команде сети пиццерий{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Hero Section -->
+    <section class="py-5 text-center">
+        <div class="row py-lg-5">
+            <div class="col-lg-8 col-md-10 mx-auto">
+                <h1 class="fw-bold">Присоединяйтесь к нашей команде</h1>
+                <p class="lead text-muted">Откройте для себя захватывающие карьерные возможности в нашей растущей сети пиццерий. Мы ищем увлеченных людей, которые любят создавать потрясающие впечатления для наших клиентов.</p>
+                <div class="mt-4">
+                    <a href="{% url 'vacancy_list' %}" class="btn btn-danger btn-lg me-2">Посмотреть вакансии</a>
+                    {% if not user.is_authenticated %}
+                        <a href="{% url 'register' %}" class="btn btn-outline-secondary btn-lg">Создать аккаунт</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Why Join Us Section -->
+    <section class="py-5 bg-light rounded">
+        <div class="container">
+            <h2 class="text-center mb-5">Почему стоит присоединиться к нам?</h2>
+            <div class="row g-4">
+                <div class="col-md-4">
+                    <div class="card h-100 border-0 shadow-sm">
+                        <div class="card-body text-center">
+                            <i class="fas fa-pizza-slice fa-3x text-danger mb-3"></i>
+                            <h4 class="card-title">Страсть к еде</h4>
+                            <p class="card-text">Присоединяйтесь к команде, которая увлечена созданием лучшего опыта пиццы для наших клиентов.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card h-100 border-0 shadow-sm">
+                        <div class="card-body text-center">
+                            <i class="fas fa-users fa-3x text-danger mb-3"></i>
+                            <h4 class="card-title">Отличная команда</h4>
+                            <p class="card-text">Станьте частью поддерживающей, веселой и динамичной рабочей среды, где ваши идеи имеют значение.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card h-100 border-0 shadow-sm">
+                        <div class="card-body text-center">
+                            <i class="fas fa-chart-line fa-3x text-danger mb-3"></i>
+                            <h4 class="card-title">Возможности роста</h4>
+                            <p class="card-text">Развивайте свои навыки и продвигайте свою карьеру с нашими возможностями обучения и продвижения.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Featured Positions Section -->
+    <section class="py-5">
+        <div class="container">
+            <h2 class="text-center mb-5">Актуальные вакансии</h2>
+            
+            {% if recent_vacancies %}
+                <div class="row g-4">
+                    {% for vacancy in recent_vacancies %}
+                        <div class="col-md-4">
+                            <div class="card h-100 shadow-sm">
+                                <div class="card-body">
+                                    <h5 class="card-title">{{ vacancy.title }}</h5>
+                                    <h6 class="card-subtitle mb-2 text-muted">{{ vacancy.position_type.title }}</h6>
+                                    <p class="card-text">{{ vacancy.description|truncatewords:20 }}</p>
+                                    <p>
+                                        <span class="badge bg-secondary">
+                                            {% if vacancy.restaurants.count == 1 %}
+                                                {{ vacancy.restaurants.first.city }}
+                                            {% else %}
+                                                Несколько локаций
+                                            {% endif %}
+                                        </span>
+                                    </p>
+                                </div>
+                                <div class="card-footer bg-white">
+                                    <a href="{% url 'vacancy_detail' vacancy.id %}" class="btn btn-sm btn-outline-danger">Подробнее</a>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+                <div class="text-center mt-4">
+                    <a href="{% url 'vacancy_list' %}" class="btn btn-outline-dark">Посмотреть все вакансии</a>
+                </div>
+            {% else %}
+                <div class="alert alert-info text-center">
+                    На данный момент вакансии не доступны. Пожалуйста, проверьте позже.
+                </div>
+            {% endif %}
+        </div>
+    </section>
+    
+    <!-- Team Section -->
+    <section class="py-5 bg-light rounded">
+        <div class="container">
+            <h2 class="text-center mb-5">Познакомьтесь с нашей командой</h2>
+            <div class="row">
+                <div class="col-lg-6">
+                    <div class="card mb-3 border-0 shadow-sm">
+                        <div class="row g-0">
+                            <div class="col-md-4">
+                                <img src="{% static 'img/pizza_maker.jpg' %}" class="img-fluid rounded-start" alt="Пиццмейкер">
+                            </div>
+                            <div class="col-md-8">
+                                <div class="card-body">
+                                    <h5 class="card-title">Пиццмейкеры</h5>
+                                    <p class="card-text">Наши талантливые повара сочетают традиционные техники с инновационными подходами, чтобы создавать идеальную пиццу каждый раз.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="card mb-3 border-0 shadow-sm">
+                        <div class="row g-0">
+                            <div class="col-md-4">
+                                <img src="{% static 'img/service.jpg' %}" class="img-fluid rounded-start" alt="Персонал ресторана">
+                            </div>
+                            <div class="col-md-8">
+                                <div class="card-body">
+                                    <h5 class="card-title">Команда обслуживания</h5>
+                                    <p class="card-text">Наша дружелюбная и профессиональная команда обслуживания гарантирует, что каждый клиент получит исключительный опыт обслуживания.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-lg-6">
+                    <div class="card mb-3 border-0 shadow-sm">
+                        <div class="row g-0">
+                            <div class="col-md-4">
+                                <img src="{% static 'img/manager.jpg' %}" class="img-fluid rounded-start" alt="Менеджер ресторана">
+                            </div>
+                            <div class="col-md-8">
+                                <div class="card-body">
+                                    <h5 class="card-title">Управляющая команда</h5>
+                                    <p class="card-text">Наши опытные менеджеры руководят своим примером, создавая позитивную рабочую среду и обеспечивая успех бизнеса.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="card mb-3 border-0 shadow-sm">
+                        <div class="row g-0">
+                            <div class="col-md-4">
+                                <img src="{% static 'img/pizza_delivery.jpg' %}" class="img-fluid rounded-start" alt="Команда доставки">
+                            </div>
+                            <div class="col-md-8">
+                                <div class="card-body">
+                                    <h5 class="card-title">Команда доставки</h5>
+                                    <p class="card-text">Наша надежная команда доставки гарантирует, что наша пицца доходит до клиентов быстро и в идеальном состоянии.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Application Process Section -->
+    <section class="py-5">
+        <div class="container">
+            <h2 class="text-center mb-5">Наш процесс найма</h2>
+            <div class="row justify-content-center">
+                <div class="col-lg-10">
+                    <div class="row">
+                        <div class="col-md-3 text-center">
+                            <div class="rounded-circle bg-danger text-white d-flex align-items-center justify-content-center mx-auto mb-3" style="width: 100px; height: 100px;">
+                                <i class="fas fa-user-plus fa-3x"></i>
+                            </div>
+                            <h5>1. Подать заявку онлайн</h5>
+                            <p class="small">Создайте аккаунт и отправьте заявку на желаемую должность.</p>
+                        </div>
+                        <div class="col-md-3 text-center">
+                            <div class="rounded-circle bg-danger text-white d-flex align-items-center justify-content-center mx-auto mb-3" style="width: 100px; height: 100px;">
+                                <i class="fas fa-file-alt fa-3x"></i>
+                            </div>
+                            <h5>2. Рассмотрение резюме</h5>
+                            <p class="small">Наша HR-команда рассмотрит вашу заявку и резюме.</p>
+                        </div>
+                        <div class="col-md-3 text-center">
+                            <div class="rounded-circle bg-danger text-white d-flex align-items-center justify-content-center mx-auto mb-3" style="width: 100px; height: 100px;">
+                                <i class="fas fa-comments fa-3x"></i>
+                            </div>
+                            <h5>3. Собеседование</h5>
+                            <p class="small">Выбранные кандидаты будут приглашены на собеседование с нашей командой.</p>
+                        </div>
+                        <div class="col-md-3 text-center">
+                            <div class="rounded-circle bg-danger text-white d-flex align-items-center justify-content-center mx-auto mb-3" style="width: 100px; height: 100px;">
+                                <i class="fas fa-handshake fa-3x"></i>
+                            </div>
+                            <h5>4. Добро пожаловать на борт</h5>
+                            <p class="small">Успешные кандидаты получат предложение присоединиться к нашей пицца-семье!</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Statistics Section -->
+    <section class="py-5 bg-danger text-white">
+        <div class="container">
+            <div class="row text-center">
+                <div class="col-md-4 mb-4 mb-md-0">
+                    <h2 class="display-4 fw-bold">{{ restaurant_count }}</h2>
+                    <p class="lead">Пиццерии</p>
+                </div>
+                <div class="col-md-4 mb-4 mb-md-0">
+                    <h2 class="display-4 fw-bold">{{ vacancy_count }}</h2>
+                    <p class="lead">Открытых вакансий</p>
+                </div>
+                <div class="col-md-4">
+                    <h2 class="display-4 fw-bold">{{ position_types|length }}</h2>
+                    <p class="lead">Категорий работ</p>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- CTA Section -->
+    <section class="py-5 text-center">
+        <div class="container">
+            <h2>Готовы присоединиться к нашей команде?</h2>
+            <p class="lead">Изучите наши текущие вакансии и найдите идеальную должность для вас.</p>
+            <a href="{% url 'vacancy_list' %}" class="btn btn-lg btn-danger mt-3">Просмотреть вакансии</a>
+        </div>
+    </section>
+</div>
+{% endblock %}

@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+
+{% block title %}Удалить резюме - PizzaJobs{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header bg-danger text-white">
+                    <h2 class="card-title h4 mb-0">Подтвердите удаление резюме</h2>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Внимание:</strong> Вы собираетесь удалить резюме <strong>"{{ resume.title }}"</strong>. Это действие необратимо.
+                    </div>
+                    
+                    <p>Если вы удалите это резюме:</p>
+                    <ul>
+                        <li>Оно больше не будет доступно для использования в откликах</li>
+                        <li>Существующие отклики, в которых было использовано это резюме, сохранят ссылку на него</li>
+                    </ul>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-grid gap-2 mt-4">
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-trash-alt me-2"></i>Удалить резюме
+                            </button>
+                            <a href="{% url 'view_profile' %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-2"></i>Отмена
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

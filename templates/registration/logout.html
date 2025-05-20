@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+
+{% block title %}Выход - PizzaJobs{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0"><i class="fas fa-sign-out-alt me-2"></i>Выход из системы</h4>
+                </div>
+                <div class="card-body text-center">
+                    <p class="mb-4">Вы уверены, что хотите выйти из системы?</p>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-danger">Да, выйти</button>
+                            <a href="{% url 'home' %}" class="btn btn-outline-secondary">Отмена</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
