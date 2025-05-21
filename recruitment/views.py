@@ -33,8 +33,25 @@ def home(request):
     restaurant_count = Restaurant.objects.count()
     position_types = PositionType.objects.all()[:5]  # Get 5 position types for display
     
-    # Get recent vacancies
-    recent_vacancies = Vacancy.objects.filter(is_active=True).order_by('-created_at')[:3]
+    # Get recent vacancies with statistics
+    recent_vacancies = Vacancy.objects.filter(is_active=True).annotate(
+        total_applications=Count('applications', distinct=True),
+        accepted_applications=Count(
+            'applications',
+            filter=Q(applications__status=ApplicationStatus.ACCEPTED),
+            distinct=True
+        ),
+    ).annotate(
+        acceptance_rate=Round(
+            Case(
+                When(total_applications__gt=0,
+                    then=F('accepted_applications') * Value(100.0) / F('total_applications')),
+                default=Value(0),
+                output_field=FloatField()
+            ),
+            0
+        )
+    ).order_by('-created_at')[:3]
     
     context = {
         'vacancy_count': vacancy_count,
@@ -201,34 +218,53 @@ def vacancy_list(request):
     return render(request, 'vacancies/list.html', context)
 
 def vacancy_detail(request, vacancy_id):
-    vacancy = get_object_or_404(Vacancy, id=vacancy_id, is_active=True)
-    
-    # Check if user has already applied
-    user_applied = False
-    if request.user.is_authenticated:
-        user_applied = Application.objects.filter(
-            vacancy=vacancy, 
-            user=request.user
-        ).exists()
+        vacancy = get_object_or_404(Vacancy, id=vacancy_id, is_active=True)
 
-    total_applications = Application.objects.filter(vacancy=vacancy).count()
-    accepted_applications = Application.objects.filter(
-        vacancy=vacancy,
-        status=ApplicationStatus.ACCEPTED
-    ).count()
+        user_applied = False
+        if request.user.is_authenticated:
+            user_applied = Application.objects.filter(
+                vacancy=vacancy,
+                user=request.user
+            ).exists()
 
-    acceptance_rate = (
-        (accepted_applications * 100) // total_applications
-        if total_applications > 0 else 0
-    )
-    
-    context = {
-        'vacancy': vacancy,
-        'user_applied': user_applied,
-        'total_applications': total_applications,
-        'acceptance_rate':     acceptance_rate,
-    }
-    return render(request, 'vacancies/detail.html', context)
+        total_applications = Application.objects.filter(vacancy=vacancy).count()
+        accepted_applications = Application.objects.filter(
+            vacancy=vacancy,
+            status=ApplicationStatus.ACCEPTED
+        ).count()
+
+        acceptance_rate = (
+            (accepted_applications * 100) // total_applications
+            if total_applications > 0 else 0
+        )
+
+        vacancy_restaurants = vacancy.restaurants.all()
+        
+
+        similar_qs = (Vacancy.objects
+        .filter(is_active=True,
+                restaurants__in=vacancy_restaurants)
+        .exclude(pk=vacancy.pk)
+        .distinct())
+
+        restaurant_ids = vacancy_restaurants.values_list('id', flat=True)
+        similar_vacancies = []
+        for sim in similar_qs.prefetch_related('restaurants'):
+            common = sim.restaurants.filter(id__in=restaurant_ids).first()
+            similar_vacancies.append({
+                'vacancy': sim,
+                'restaurant': common
+                })
+
+        context = {
+            'vacancy': vacancy,
+            'user_applied': user_applied,
+            'total_applications': total_applications,
+            'acceptance_rate': acceptance_rate,
+            'similar_vacancies': similar_vacancies,
+        }
+        return render(request, 'vacancies/detail.html', context)
+
 
 # Application views
 @login_required

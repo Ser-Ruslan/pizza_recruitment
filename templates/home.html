@@ -21,7 +21,7 @@
             </div>
         </div>
     </section>
-    
+
     <!-- Why Join Us Section -->
     <section class="py-5 bg-light rounded">
         <div class="container">
@@ -57,12 +57,12 @@
             </div>
         </div>
     </section>
-    
+
     <!-- Featured Positions Section -->
     <section class="py-5">
         <div class="container">
             <h2 class="text-center mb-5">Актуальные вакансии</h2>
-            
+
             {% if recent_vacancies %}
                 <div class="row g-4">
                     {% for vacancy in recent_vacancies %}
@@ -70,8 +70,7 @@
                             <div class="card h-100 shadow-sm">
                                 <div class="card-body">
                                     <h5 class="card-title">{{ vacancy.title }}</h5>
-                                    <h6 class="card-subtitle mb-2 text-muted">{{ vacancy.position_type.title }}</h6>
-                                    <p class="card-text">{{ vacancy.description|truncatewords:20 }}</p>
+                                    <p class="card-text">{{ vacancy.description|truncatewords:30 }}</p>
                                     <p>
                                         <span class="badge bg-secondary">
                                             {% if vacancy.restaurants.count == 1 %}
@@ -81,6 +80,12 @@
                                             {% endif %}
                                         </span>
                                     </p>
+                                    <div class="small text-muted mb-2">
+                                        Откликнулись: {{ vacancy.total_applications }} чел.
+                                        {% if vacancy.total_applications > 0 %}
+                                            | Принято: {{ vacancy.acceptance_rate }}%
+                                        {% endif %}
+                                    </div>
                                 </div>
                                 <div class="card-footer bg-white">
                                     <a href="{% url 'vacancy_detail' vacancy.id %}" class="btn btn-sm btn-outline-danger">Подробнее</a>
@@ -99,7 +104,7 @@
             {% endif %}
         </div>
     </section>
-    
+
     <!-- Team Section -->
     <section class="py-5 bg-light rounded">
         <div class="container">
@@ -170,7 +175,7 @@
             </div>
         </div>
     </section>
-    
+
     <!-- Application Process Section -->
     <section class="py-5">
         <div class="container">
@@ -211,7 +216,7 @@
             </div>
         </div>
     </section>
-    
+
     <!-- Statistics Section -->
     <section class="py-5 bg-danger text-white">
         <div class="container">
@@ -231,7 +236,7 @@
             </div>
         </div>
     </section>
-    
+
     <!-- CTA Section -->
     <section class="py-5 text-center">
         <div class="container">

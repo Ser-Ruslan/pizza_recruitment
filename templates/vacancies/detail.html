@@ -99,37 +99,29 @@
         
         <div class="col-lg-4">
             <!-- Similar Vacancies Sidebar -->
-            <div class="card shadow-sm mb-4">
-                <div class="card-header bg-light">
-                    <h5 class="mb-0">Похожие вакансии</h5>
-                </div>
-                <div class="card-body">
-                    {% with similar_vacancies=vacancy.position_type.vacancies.all|slice:":5" %}
-                        {% if similar_vacancies %}
-                            <ul class="list-group list-group-flush">
-                                {% for similar in similar_vacancies %}
-                                    {% if similar.id != vacancy.id and similar.is_active %}
-                                        <li class="list-group-item">
-                                            <a href="{% url 'vacancy_detail' similar.id %}" class="text-decoration-none">
-                                                {{ similar.title }}
-                                            </a>
-                                            <div class="small text-muted">
-                                                {% if similar.restaurants.count == 1 %}
-                                                    {{ similar.restaurants.first.city }}
-                                                {% else %}
-                                                    Несколько локаций
-                                                {% endif %}
-                                            </div>
-                                        </li>
-                                    {% endif %}
-                                {% endfor %}
-                            </ul>
-                        {% else %}
-                            <p class="text-muted">Нет похожих вакансий.</p>
-                        {% endif %}
-                    {% endwith %}
-                </div>
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">Похожие вакансии</h5>
             </div>
+            <div class="card-body">
+                {% if similar_vacancies %}
+                    <ul class="list-group list-group-flush">
+                        {% for item in similar_vacancies %}
+                            <li class="list-group-item">
+                                <a href="{% url 'vacancy_detail' item.vacancy.id %}" class="text-decoration-none">
+                                    {{ item.vacancy.title }}
+                                </a>
+                                <div class="small text-muted">
+                                    {{ item.restaurant.name }}
+                                </div>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="text-muted">Нет похожих вакансий.</p>
+                {% endif %}
+            </div>
+        </div>
             
             <!-- Application Process Card -->
             <div class="card shadow-sm mb-4">
