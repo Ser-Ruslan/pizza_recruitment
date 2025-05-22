@@ -89,9 +89,8 @@
                 </div>
             </div>
 
-            <!-- Внутренние комментарии -->
-            {% if user.profile.role != 'CANDIDATE' %}
-                <div class="card shadow mb-4">
+            <!-- Комментарии -->
+            <div class="card shadow mb-4">
                     <div class="card-header bg-white">
                         <h3 class="h5 mb-0">Внутренние комментарии</h3>
                     </div>
@@ -99,7 +98,7 @@
                         {% if comments %}
                             <div class="comments-list">
                                 {% for comment in comments %}
-                                    {% if comment.is_approved or user.profile.role in 'HR_MANAGER,RESTAURANT_MANAGER'|stringformat:'s'|make_list %}
+                                    {% if comment.is_approved or comment.author == user or user.profile.role in 'HR_MANAGER,RESTAURANT_MANAGER'|stringformat:'s'|make_list %}
                                         <div class="comment mb-3 pb-3 {% if not forloop.last %}border-bottom{% endif %}">
                                             <div class="d-flex justify-content-between align-items-start">
                                                 <div>
