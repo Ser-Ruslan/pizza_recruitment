@@ -38,6 +38,7 @@ urlpatterns = [
     
     # Application routes
     path('vacancies/<int:vacancy_id>/apply/', views.apply_for_vacancy, name='apply_for_vacancy'),
+path('vacancies/<int:vacancy_id>/quick-apply/', views.quick_apply, name='quick_apply'),
     path('applications/', views.application_list, name='application_list'),
     path('applications/<int:application_id>/', views.application_detail, name='application_detail'),
     

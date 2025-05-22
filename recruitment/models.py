@@ -148,6 +148,20 @@ class ApplicationComment(models.Model):
     def __str__(self):
         return f"Comment by {self.author.username} on {self.application.user.username}'s application"
 
+# Quick Application Model
+class QuickApplication(models.Model):
+    vacancy = models.ForeignKey(Vacancy, on_delete=models.CASCADE, related_name='quick_applications')
+    full_name = models.CharField(max_length=100)
+    email = models.EmailField()
+    phone = models.CharField(max_length=15)
+    resume = models.FileField(upload_to='quick_resumes/')
+    cover_letter = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=20, choices=ApplicationStatus.choices, default=ApplicationStatus.NEW)
+
+    def __str__(self):
+        return f"Quick application from {self.full_name} for {self.vacancy.title}"
+
 # Notification Model
 class Notification(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')

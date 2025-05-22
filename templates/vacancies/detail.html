@@ -85,9 +85,14 @@
                                 {% endif %}
                             {% endif %}
                         {% else %}
-                            <a href="{% url 'login' %}?next={% url 'apply_for_vacancy' vacancy.id %}" class="btn btn-danger">
-                                <i class="fas fa-sign-in-alt me-2"></i>Войдите, чтобы подать заявку
-                            </a>
+                            <div class="d-grid gap-2">
+                                <a href="{% url 'quick_apply' vacancy.id %}" class="btn btn-danger">
+                                    <i class="fas fa-bolt me-2"></i>Быстрый отклик
+                                </a>
+                                <a href="{% url 'login' %}?next={% url 'apply_for_vacancy' vacancy.id %}" class="btn btn-outline-secondary">
+                                    <i class="fas fa-sign-in-alt me-2"></i>Войти и подать заявку
+                                </a>
+                            </div>
                         {% endif %}
                     </div>
                 </div>

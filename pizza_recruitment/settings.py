@@ -23,6 +23,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'widget_tweaks',
     'recruitment.apps.RecruitmentConfig',
     'crispy_forms',
     'crispy_bootstrap5',
@@ -128,6 +129,18 @@ ALLOWED_RESUME_TYPES = ['application/pdf', 'application/msword',
 MAX_RESUME_SIZE = 5 * 1024 * 1024  # 5MB
 
 # CSRF Settings
-CSRF_TRUSTED_ORIGINS = ['https://*.replit.app', 'https://*.replit.dev', 'https://*.repl.co']
+CSRF_TRUSTED_ORIGINS = [
+    'https://*.replit.app',
+    'https://*.replit.dev',
+    'https://*.repl.co',
+    'https://*.replit.dev:3000'
+]
 
-
+# Email settings
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = os.environ.get('ruslanprogamer016@gmail.com')
+EMAIL_HOST_PASSWORD = os.environ.get('mvya cfue dwxn cziy')
+DEFAULT_FROM_EMAIL = os.environ.get('ruslanprogamer016@gmail.com')

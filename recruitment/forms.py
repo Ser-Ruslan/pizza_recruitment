@@ -7,8 +7,31 @@ from django.utils.translation import gettext_lazy as _
 
 from .models import (
     UserProfile, Resume, Vacancy, Application, 
-    Interview, ApplicationComment, UserRole
+    Interview, ApplicationComment, UserRole, QuickApplication
 )
+
+# Quick Application form
+class QuickApplicationForm(forms.ModelForm):
+    class Meta:
+        model = QuickApplication
+        fields = ['full_name', 'email', 'phone', 'resume', 'cover_letter']
+        widgets = {
+            'cover_letter': forms.Textarea(attrs={'rows': 3}),
+        }
+        labels = {
+            'full_name': _('ФИО'),
+            'email': _('Email'),
+            'phone': _('Телефон'),
+            'resume': _('Резюме'),
+            'cover_letter': _('Сопроводительное письмо'),
+        }
+
+    def clean_resume(self):
+        resume = self.cleaned_data.get('resume')
+        if resume:
+            if resume.size > settings.MAX_RESUME_SIZE:
+                raise forms.ValidationError("Размер файла не может превышать 5МБ.")
+        return resume
 
 # User registration form
 class UserRegisterForm(UserCreationForm):

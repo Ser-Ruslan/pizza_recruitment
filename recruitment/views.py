@@ -5,7 +5,7 @@ from django.contrib import messages
 from django.views.decorators.http import require_http_methods
 from django.db.models import Count, Q, F, Case, When, Value, FloatField
 from django.db.models.functions import Round
-from .models import Vacancy, ApplicationStatus
+from .models import QuickApplication, Vacancy, ApplicationStatus
 from django.http import HttpResponseForbidden, JsonResponse
 from django.core.paginator import Paginator
 from django.utils import timezone
@@ -19,7 +19,7 @@ from .models import (
 from .forms import (
     UserRegisterForm, UserProfileForm, ResumeUploadForm, 
     VacancyForm, ApplicationForm, ApplicationStatusForm, 
-    InterviewForm, ApplicationCommentForm
+    InterviewForm, ApplicationCommentForm, QuickApplicationForm
 )
 from .decorators import (
     hr_required, restaurant_manager_required, 
@@ -319,10 +319,12 @@ def application_list(request):
     if user_profile.role == UserRole.CANDIDATE:
         # Candidates see their own applications
         applications = Application.objects.filter(user=request.user).order_by('-applied_at')
+        quick_applications = []
     
     elif user_profile.role == UserRole.HR_MANAGER:
         # HR managers see all applications
         applications = Application.objects.all().order_by('-applied_at')
+        quick_applications = QuickApplication.objects.all().order_by('-created_at')
     
     elif user_profile.role == UserRole.RESTAURANT_MANAGER:
         # Restaurant managers see applications for their restaurant's vacancies
@@ -330,10 +332,14 @@ def application_list(request):
         applications = Application.objects.filter(
             vacancy__restaurants__in=managed_restaurants
         ).distinct().order_by('-applied_at')
+        quick_applications = QuickApplication.objects.filter(
+            vacancy__restaurants__in=managed_restaurants
+        ).distinct().order_by('-created_at')
     
     else:
         # Admin sees all applications
         applications = Application.objects.all().order_by('-applied_at')
+        quick_applications = QuickApplication.objects.all().order_by('-created_at')
     
     # Apply filters
     status_filter = request.GET.get('status', '')
@@ -686,6 +692,36 @@ def notifications(request):
 
 # Logout view
 @require_http_methods(["GET", "POST"])
+def quick_apply(request, vacancy_id):
+    vacancy = get_object_or_404(Vacancy, id=vacancy_id, is_active=True)
+    
+    if request.method == 'POST':
+        form = QuickApplicationForm(request.POST, request.FILES)
+        if form.is_valid():
+            quick_app = form.save(commit=False)
+            quick_app.vacancy = vacancy
+            quick_app.save()
+            
+            # Create notifications for HR and restaurant managers
+            for restaurant in vacancy.restaurants.all():
+                if restaurant.manager:
+                    Notification.objects.create(
+                        user=restaurant.manager,
+                        title=f"Быстрый отклик на {vacancy.title}",
+                        message=f"Получен быстрый отклик от {quick_app.full_name} на вакансию {vacancy.title}."
+                    )
+            
+            messages.success(request, 'Ваш отклик успешно отправлен.')
+            return redirect('vacancy_detail', vacancy_id=vacancy_id)
+    else:
+        form = QuickApplicationForm()
+    
+    context = {
+        'form': form,
+        'vacancy': vacancy,
+    }
+    return render(request, 'vacancies/quick_apply.html', context)
+
 def logout_view(request):
     if request.method == 'POST':
         logout(request)
