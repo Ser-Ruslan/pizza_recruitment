@@ -99,7 +99,7 @@
                         {% if comments %}
                             <div class="comments-list">
                                 {% for comment in comments %}
-                                    {% if comment.is_approved or user.profile.role in 'HR_MANAGER,RESTAURANT_MANAGER'|split:',' %}
+                                    {% if comment.is_approved or user.profile.role in 'HR_MANAGER,RESTAURANT_MANAGER'|stringformat:'s'|make_list %}
                                         <div class="comment mb-3 pb-3 {% if not forloop.last %}border-bottom{% endif %}">
                                             <div class="d-flex justify-content-between align-items-start">
                                                 <div>
@@ -118,7 +118,7 @@
                                                             </button>
                                                         </form>
                                                     {% endif %}
-                                                    {% if comment.needs_moderation and user.profile.role in 'HR_MANAGER,RESTAURANT_MANAGER'|split:',' %}
+                                                    {% if comment.needs_moderation and user.profile.role in 'HR_MANAGER,RESTAURANT_MANAGER'|stringformat:'s'|make_list %}
                                                         <form method="post" action="{% url 'moderate_comment' comment.id %}" class="d-inline ms-1">
                                                             {% csrf_token %}
                                                             <input type="hidden" name="action" value="approve">
