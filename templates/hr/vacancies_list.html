@@ -12,7 +12,7 @@
             </a>
         </div>
     </div>
-    
+
     <!-- Фильтры -->
     <div class="card mb-4 shadow-sm">
         <div class="card-header bg-light">
@@ -44,7 +44,7 @@
             </form>
         </div>
     </div>
-    
+
     <!-- Таблица вакансий -->
     <div class="card shadow">
         <div class="card-body">
@@ -94,6 +94,9 @@
                                             <a href="{% url 'vacancy_detail' vacancy.id %}" class="btn btn-sm btn-outline-secondary">
                                                 <i class="fas fa-eye"></i>
                                             </a>
+                                            <a href="{% url 'quick_apply' vacancy.id %}" class="btn btn-sm btn-outline-warning">
+                                                <i class="fas fa-bolt"></i>
+                                            </a>
                                             <form action="{% url 'toggle_vacancy_status' vacancy.id %}" method="post" class="d-inline">
                                                 {% csrf_token %}
                                                 <button type="submit" class="btn btn-sm btn-outline-{% if vacancy.is_active %}warning{% else %}success{% endif %}">
@@ -107,7 +110,7 @@
                         </tbody>
                     </table>
                 </div>
-                
+
                 <!-- Пагинация -->
                 {% if page_obj.paginator.num_pages > 1 %}
                     <nav class="mt-4">
@@ -120,7 +123,7 @@
                                     <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if selected_status %}&status={{ selected_status }}{% endif %}{% if selected_position_type %}&position_type={{ selected_position_type }}{% endif %}">Предыдущая</a>
                                 </li>
                             {% endif %}
-                            
+
                             {% for num in page_obj.paginator.page_range %}
                                 {% if page_obj.number == num %}
                                     <li class="page-item active">
@@ -132,7 +135,7 @@
                                     </li>
                                 {% endif %}
                             {% endfor %}
-                            
+
                             {% if page_obj.has_next %}
                                 <li class="page-item">
                                     <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if selected_status %}&status={{ selected_status }}{% endif %}{% if selected_position_type %}&position_type={{ selected_position_type }}{% endif %}">Следующая</a>
@@ -151,7 +154,7 @@
             {% endif %}
         </div>
     </div>
-    
+
    <div class="row mt-4">
     <div class="col-md-6">
         <div class="card shadow-sm">

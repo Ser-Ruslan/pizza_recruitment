@@ -15,6 +15,18 @@ class QuickApplicationForm(forms.ModelForm):
     class Meta:
         model = QuickApplication
         fields = ['full_name', 'email', 'phone', 'resume', 'cover_letter']
+
+    def clean_email(self):
+        email = self.cleaned_data.get('email')
+        if User.objects.filter(email=email).exists():
+            raise forms.ValidationError('Пользователь с таким email уже зарегистрирован')
+        return email
+
+    def clean_phone(self):
+        phone = self.cleaned_data.get('phone')
+        if UserProfile.objects.filter(phone=phone).exists():
+            raise forms.ValidationError('Пользователь с таким номером телефона уже зарегистрирован')
+        return phone
         widgets = {
             'cover_letter': forms.Textarea(attrs={'rows': 3}),
         }
@@ -38,6 +50,19 @@ class UserRegisterForm(UserCreationForm):
     email = forms.EmailField(label=_('Email'), required=True)
     first_name = forms.CharField(label=_('Имя'), required=True)
     last_name = forms.CharField(label=_('Фамилия'), required=True)
+    phone = forms.CharField(label=_('Телефон'), required=True)
+
+    def clean_email(self):
+        email = self.cleaned_data.get('email')
+        if User.objects.filter(email=email).exists():
+            raise forms.ValidationError('Этот email уже используется')
+        return email
+
+    def clean_phone(self):
+        phone = self.cleaned_data.get('phone')
+        if UserProfile.objects.filter(phone=phone).exists():
+            raise forms.ValidationError('Этот номер телефона уже используется')
+        return phone
     
     class Meta:
         model = User
