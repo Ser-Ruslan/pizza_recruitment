@@ -11,6 +11,8 @@ from django.core.paginator import Paginator
 from django.utils import timezone
 from django.urls import reverse
 from django.db import transaction
+import string
+import random
 
 from .models import (
     User, UserProfile, Resume, Restaurant, PositionType, 
