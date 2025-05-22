@@ -110,7 +110,7 @@
                                                 </div>
                                                 <div class="d-flex align-items-center">
                                                     <small class="text-muted me-2">{{ comment.created_at|date:"j F Y, H:i" }}</small>
-                                                    {% if user == comment.author or user.profile.role in 'HR_MANAGER,RESTAURANT_MANAGER'|split:',' %}
+                                                    {% if user == comment.author or user.profile.role in 'HR_MANAGER,RESTAURANT_MANAGER'|stringformat:'s'|make_list %}
                                                         <form method="post" action="{% url 'delete_comment' comment.id %}" class="d-inline">
                                                             {% csrf_token %}
                                                             <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Удалить комментарий?')">
