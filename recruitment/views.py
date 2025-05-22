@@ -12,6 +12,15 @@ from django.utils import timezone
 from django.urls import reverse
 from django.db import transaction
 from django.core.mail import send_mail
+from django.db.models.signals import post_save, pre_save
+from django.dispatch import receiver
+from django.contrib.auth.models import User
+from .models import Application, ApplicationStatus, QuickApplication, UserProfile, UserRole, Notification, Resume
+from django.core.mail import send_mail
+from django.conf import settings
+from django.db import transaction
+import string
+import random
 
 from .models import (
     User, UserProfile, Resume, Restaurant, PositionType, 
