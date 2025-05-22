@@ -10,6 +10,7 @@ from django.http import HttpResponseForbidden, JsonResponse
 from django.core.paginator import Paginator
 from django.utils import timezone
 from django.urls import reverse
+from django.db import transaction
 
 from .models import (
     User, UserProfile, Resume, Restaurant, PositionType, 
