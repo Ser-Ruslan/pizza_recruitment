@@ -10,6 +10,25 @@ from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from django.conf import settings
 
+def send_notification_with_email(user, title, message):
+    """
+    Creates a notification and sends an email to the user.
+    """
+    Notification.objects.create(
+        user=user,
+        title=title,
+        message=message
+    )
+
+    # Send email
+    send_mail(
+        title,
+        message,
+        settings.EMAIL_HOST_USER,
+        [user.email],
+        fail_silently=False,
+    )
+
 @receiver(post_save, sender=Application)
 def application_notifications(sender, instance, created, **kwargs):
     if created:
@@ -19,38 +38,38 @@ def application_notifications(sender, instance, created, **kwargs):
         User = get_user_model()
         hr_users = User.objects.filter(profile__role=UserRole.HR_MANAGER)
         for hr in hr_users:
-            Notification.objects.create(
-                user=hr,
-                title=f"Новая заявка на «{vacancy.title}»",
-                message=f"{instance.user.get_full_name()} подал(а) заявку на «{vacancy.title}»."
+            send_notification_with_email(
+                hr,
+                f"Новая заявка на «{vacancy.title}»",
+                f"{instance.user.get_full_name()} подал(а) заявку на «{vacancy.title}»."
             )
 
         # Уведомляем менеджеров ресторанов
         for restaurant in vacancy.restaurants.all():
             if restaurant.manager:
-                Notification.objects.create(
-                    user=restaurant.manager,
-                    title=f"Новая заявка на {vacancy.title}",
-                    message=f"Поступила заявка от {instance.user.get_full_name()} на «{vacancy.title}».",
+                send_notification_with_email(
+                    restaurant.manager,
+                    f"Новая заявка на {vacancy.title}",
+                    f"Поступила заявка от {instance.user.get_full_name()} на «{vacancy.title}»."
                 )
 
 @receiver(post_save, sender=Interview)
 def interview_notifications(sender, instance, created, **kwargs):
     if created:
         user = instance.application.user
-        Notification.objects.create(
-            user=user,
-            title="Собеседование назначено",
-            message=(
+        send_notification_with_email(
+            user,
+            "Собеседование назначено",
+            (
                 f"Для вашей заявки «{instance.application.vacancy.title}» "
                 f"назначено собеседование {instance.date_time.strftime('%d.%m.%Y в %H:%M')}."
             )
         )
         if instance.interviewer:
-            Notification.objects.create(
-                user=instance.interviewer,
-                title="Вас назначили интервьюером",
-                message=(
+            send_notification_with_email(
+                instance.interviewer,
+                "Вас назначили интервьюером",
+                (
                     f"Вас назначили интервьюером для {user.get_full_name()} "
                     f"по вакансии «{instance.application.vacancy.title}» "
                     f"{instance.date_time.strftime('%d.%m.%Y в %H:%M')}."
@@ -71,20 +90,20 @@ def comment_notifications(sender, instance, created, **kwargs):
         if author_role == UserRole.RESTAURANT_MANAGER:
             hr_users = User.objects.filter(profile__role=UserRole.HR_MANAGER)
             for hr in hr_users:
-                Notification.objects.create(
-                    user=hr,
-                    title=f"Новый комментарий к заявке №{application.id}",
-                    message=f"Менеджер ресторана {author.get_full_name()} оставил комментарий к заявке на вакансию «{application.vacancy.title}» от {application.user.get_full_name()}."
+                send_notification_with_email(
+                    hr,
+                    f"Новый комментарий к заявке №{application.id}",
+                    f"Менеджер ресторана {author.get_full_name()} оставил комментарий к заявке на вакансию «{application.vacancy.title}» от {application.user.get_full_name()}."
                 )
 
         # Если комментарий от HR, уведомляем менеджеров ресторана
         elif author_role == UserRole.HR_MANAGER:
             for restaurant in application.vacancy.restaurants.all():
                 if restaurant.manager:
-                    Notification.objects.create(
-                        user=restaurant.manager,
-                        title=f"Комментарий к заявке №{application.id}",
-                        message=f"HR-менеджер {author.get_full_name()} оставил комментарий к заявке на вакансию «{application.vacancy.title}» от {application.user.get_full_name()}."
+                    send_notification_with_email(
+                        restaurant.manager,
+                        f"Комментарий к заявке №{application.id}",
+                        f"HR-менеджер {author.get_full_name()} оставил комментарий к заявке на вакансию «{application.vacancy.title}» от {application.user.get_full_name()}."
                     )
 
 @receiver(post_save, sender=QuickApplication)
@@ -96,10 +115,10 @@ def quick_application_status_handler(sender, instance, created, **kwargs):
         User = get_user_model()
         hr_users = User.objects.filter(profile__role=UserRole.HR_MANAGER)
         for hr in hr_users:
-            Notification.objects.create(
-                user=hr,
-                title=f"Новый быстрый отклик на {instance.vacancy.title}",
-                message=f"Получен быстрый отклик от {instance.full_name} на вакансию {instance.vacancy.title}."
+            send_notification_with_email(
+                hr,
+                f"Новый быстрый отклик на {instance.vacancy.title}",
+                f"Получен быстрый отклик от {instance.full_name} на вакансию {instance.vacancy.title}."
             )
 
     # Этот сигнал вызывается, когда меняется статус быстрой заявки
@@ -179,8 +198,8 @@ def quick_application_status_handler(sender, instance, created, **kwargs):
             )
 
             # Создаем уведомление для кандидата
-            Notification.objects.create(
-                user=user,
-                title="Добро пожаловать в PizzaJobs",
-                message=f"Для вас создан аккаунт. Ваша заявка на вакансию {instance.vacancy.title} принята в работу."
+            send_notification_with_email(
+                user,
+                "Добро пожаловать в PizzaJobs",
+                f"Для вас создан аккаунт. Ваша заявка на вакансию {instance.vacancy.title} принята в работу."
             )
