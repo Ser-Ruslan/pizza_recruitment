@@ -11,7 +11,7 @@
             <li class="breadcrumb-item active">Детали заявки</li>
         </ol>
     </nav>
-    
+
     <div class="row">
         <div class="col-lg-8">
             <!-- Детали заявки -->
@@ -41,7 +41,7 @@
                             <p><strong>Последнее обновление:</strong> {{ application.updated_at|date:"j F Y, H:i" }}</p>
                         </div>
                     </div>
-                    
+
                     {% if application.resume %}
                         <div class="mb-4">
                             <h5>Резюме</h5>
@@ -57,7 +57,7 @@
                             </div>
                         </div>
                     {% endif %}
-                    
+
                     {% if application.cover_letter %}
                         <div class="mb-4">
                             <h5>Сопроводительное письмо</h5>
@@ -68,7 +68,7 @@
                             </div>
                         </div>
                     {% endif %}
-                    
+
                     {% if user.profile.role != 'CANDIDATE' and status_form %}
                         <div class="mt-4">
                             <h5>Обновить статус заявки</h5>
@@ -88,7 +88,7 @@
                     {% endif %}
                 </div>
             </div>
-            
+
             <!-- Внутренние комментарии -->
             {% if user.profile.role != 'CANDIDATE' %}
                 <div class="card shadow mb-4">
@@ -144,7 +144,7 @@
                         {% else %}
                             <p class="text-muted">Комментариев пока нет.</p>
                         {% endif %}
-                        
+
                         <form method="post" class="mt-4">
                             {% csrf_token %}
                             <input type="hidden" name="add_comment" value="1">
@@ -155,13 +155,12 @@
                                 {% else %}
                                     Добавить комментарий
                                 {% endif %}
-                            </button>ть комментарий</button>
+                            </button>
                             </form>
-                        {% endif %}
                     </div>
                 </div>
             {% endif %}
-            
+
             <!-- Раздел собеседований -->
             {% if interviews %}
                 <div class="card shadow mb-4">
@@ -215,7 +214,7 @@
                     </div>
                 </div>
             {% endif %}
-            
+
             <!-- Планирование собеседования -->
             {% if user.profile.role == 'HR_MANAGER' and interview_form %}
                 <div class="card shadow mb-4">
@@ -245,7 +244,7 @@
                 </div>
             {% endif %}
         </div>
-        
+
         <div class="col-lg-4">
             <!-- Карточка профиля кандидата -->
             <div class="card shadow mb-4">
@@ -260,24 +259,24 @@
                             <i class="fas fa-user fa-4x text-secondary"></i>
                         </div>
                     {% endif %}
-                    
+
                     <h4>{{ application.user.get_full_name }}</h4>
                     <p class="text-muted">{{ application.user.profile.desired_position|default:"Должность не указана" }}</p>
-                    
+
                     {% if application.user.profile.about %}
                         <div class="text-start mt-4">
                             <h6>О себе</h6>
                             <p>{{ application.user.profile.about|linebreaks }}</p>
                         </div>
                     {% endif %}
-                    
+
                     {% if application.user.profile.experience %}
                         <div class="text-start mt-4">
                             <h6>Опыт работы</h6>
                             <p>{{ application.user.profile.experience|linebreaks }}</p>
                         </div>
                     {% endif %}
-                    
+
                     {% if application.user.profile.education %}
                         <div class="text-start mt-4">
                             <h6>Образование</h6>
@@ -286,7 +285,7 @@
                     {% endif %}
                 </div>
             </div>
-            
+
             <!-- Карточка информации о вакансии -->
             <div class="card shadow mb-4">
                 <div class="card-header bg-white">
@@ -295,7 +294,7 @@
                 <div class="card-body">
                     <h5>{{ application.vacancy.title }}</h5>
                     <p class="text-muted">{{ application.vacancy.position_type.title }}</p>
-                    
+
                     <div class="mb-3">
                         <h6>Рестораны</h6>
                         <ul class="list-group list-group-flush">
@@ -306,7 +305,7 @@
                             {% endfor %}
                         </ul>
                     </div>
-                    
+
                     <div class="mb-3">
                         <h6>Зарплатный диапазон</h6>
                         <p>
@@ -321,13 +320,13 @@
                             {% endif %}
                         </p>
                     </div>
-                    
+
                     <a href="{% url 'vacancy_detail' application.vacancy.id %}" class="btn btn-sm btn-outline-secondary">
                         <i class="fas fa-external-link-alt me-1"></i>Просмотреть вакансию
                     </a>
                 </div>
             </div>
-            
+
             <!-- Карточка действий -->
             <div class="card shadow">
                 <div class="card-header bg-white">
@@ -338,7 +337,7 @@
                         <a href="{% url 'application_list' %}" class="btn btn-outline-secondary">
                             <i class="fas fa-arrow-left me-1"></i>Назад к списку
                         </a>
-                        
+
                         {% if user.profile.role != 'CANDIDATE' %}
                             {% if application.status == 'NEW' %}
                                 <form method="post">
@@ -359,7 +358,7 @@
                                     </button>
                                 </form>
                             {% endif %}
-                            
+
                             {% if application.status != 'ACCEPTED' and application.status != 'REJECTED' %}
                                 <div class="btn-group w-100" role="group">
                                     <form method="post" class="w-50">
