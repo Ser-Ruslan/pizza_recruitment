@@ -140,7 +140,12 @@ def quick_application_status_handler(sender, instance, **kwargs):
                 )
                 
                 # Send email with credentials
-                password = User.objects.make_random_password()
+                import string
+                import random
+                
+                # Generate random password
+                chars = string.ascii_letters + string.digits + string.punctuation
+                password = ''.join(random.choice(chars) for _ in range(12))
                 user.set_password(password)
                 user.save()
                 
