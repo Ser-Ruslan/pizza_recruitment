@@ -24,7 +24,7 @@ def application_notifications(sender, instance, created, **kwargs):
                 title=f"Новая заявка на «{vacancy.title}»",
                 message=f"{instance.user.get_full_name()} подал(а) заявку на «{vacancy.title}»."
             )
-        
+
         # Уведомляем менеджеров ресторанов
         for restaurant in vacancy.restaurants.all():
             if restaurant.manager:
@@ -33,7 +33,7 @@ def application_notifications(sender, instance, created, **kwargs):
                     title=f"Новая заявка на {vacancy.title}",
                     message=f"Поступила заявка от {instance.user.get_full_name()} на «{vacancy.title}».",
                 )
-    
+
 @receiver(post_save, sender=Interview)
 def interview_notifications(sender, instance, created, **kwargs):
     if created:
@@ -86,85 +86,101 @@ def comment_notifications(sender, instance, created, **kwargs):
                         title=f"Комментарий к заявке №{application.id}",
                         message=f"HR-менеджер {author.get_full_name()} оставил комментарий к заявке на вакансию «{application.vacancy.title}» от {application.user.get_full_name()}."
                     )
-        
-                    @receiver(post_save, sender=QuickApplication)
-                    def quick_application_status_handler(sender, instance, created, **kwargs):
-                        # Этот сигнал вызывается, когда меняется статус быстрой заявки
-                        if not created and instance.status == ApplicationStatus.REVIEWING:
-                            # Логика конвертации быстрой заявки в обычную
 
-                            # Создаем имя пользователя на основе полного имени
-                            username = instance.full_name.lower().replace(' ', '_')
-                            counter = 1
-                            while User.objects.filter(username=username).exists():
-                                username = f"{username}_{counter}"
-                                counter += 1
+@receiver(post_save, sender=QuickApplication)
+def quick_application_status_handler(sender, instance, created, **kwargs):
+    # Создаем уведомления для HR при создании быстрой заявки
+    if created:
+        # Уведомляем HR менеджеров
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        hr_users = User.objects.filter(profile__role=UserRole.HR_MANAGER)
+        for hr in hr_users:
+            Notification.objects.create(
+                user=hr,
+                title=f"Новый быстрый отклик на {instance.vacancy.title}",
+                message=f"Получен быстрый отклик от {instance.full_name} на вакансию {instance.vacancy.title}."
+            )
 
-                            # Вместо User.objects.make_random_password() используем собственную генерацию
-                            # Генерируем случайный пароль
-                            chars = string.ascii_letters + string.digits + string.punctuation
-                            password = ''.join(random.choice(chars) for _ in range(12))
+    # Этот сигнал вызывается, когда меняется статус быстрой заявки
+    if not created and instance.status == ApplicationStatus.REVIEWING:
+        # Логика конвертации быстрой заявки в обычную
+        from .models import ApplicationStatus, Resume
+        import string
+        import random
 
-                            with transaction.atomic():
-                                # Создаем пользователя
-                                user = User.objects.create_user(
-                                    username=username,
-                                    email=instance.email,
-                                    password=password
-                                )
+        # Создаем имя пользователя на основе полного имени
+        username = instance.full_name.lower().replace(' ', '_')
+        counter = 1
+        while User.objects.filter(username=username).exists():
+            username = f"{username}_{counter}"
+            counter += 1
 
-                                # Устанавливаем имя
-                                name_parts = instance.full_name.split(maxsplit=1)
-                                user.first_name = name_parts[0]
-                                user.last_name = name_parts[1] if len(name_parts) > 1 else ''
-                                user.save()
+        # Вместо User.objects.make_random_password() используем собственную генерацию
+        # Генерируем случайный пароль
+        chars = string.ascii_letters + string.digits + string.punctuation
+        password = ''.join(random.choice(chars) for _ in range(12))
 
-                                # Создаем профиль
-                                UserProfile.objects.create(
-                                    user=user,
-                                    role=UserRole.CANDIDATE,
-                                    phone=instance.phone
-                                )
+        with transaction.atomic():
+            # Создаем пользователя
+            user = User.objects.create_user(
+                username=username,
+                email=instance.email,
+                password=password
+            )
 
-                                # Создаем резюме
-                                resume = Resume.objects.create(
-                                    user=user,
-                                    title=f"Резюме от {instance.created_at.strftime('%d.%m.%Y')}",
-                                    file=instance.resume,
-                                    is_active=True
-                                )
+            # Устанавливаем имя
+            name_parts = instance.full_name.split(maxsplit=1)
+            user.first_name = name_parts[0]
+            user.last_name = name_parts[1] if len(name_parts) > 1 else ''
+            user.save()
 
-                                # Создаем обычную заявку
-                                application = Application.objects.create(
-                                    vacancy=instance.vacancy,
-                                    user=user,
-                                    resume=resume,
-                                    cover_letter=instance.cover_letter,
-                                    status=ApplicationStatus.REVIEWING,
-                                    applied_at=instance.created_at
-                                )
+            # Создаем профиль
+            UserProfile.objects.create(
+                user=user,
+                role=UserRole.CANDIDATE,
+                phone=instance.phone
+            )
 
-                                # Отправляем email
-                                send_mail(
-                                    'Ваша заявка принята в работу - PizzaJobs',
-                                    f'''Здравствуйте, {instance.full_name}!
+            # Создаем резюме
+            resume = Resume.objects.create(
+                user=user,
+                title=f"Резюме от {instance.created_at.strftime('%d.%m.%Y')}",
+                file=instance.resume,
+                is_active=True
+            )
 
-                    Ваша заявка на вакансию "{instance.vacancy.title}" принята в работу.
+            # Создаем обычную заявку
+            application = Application.objects.create(
+                vacancy=instance.vacancy,
+                user=user,
+                resume=resume,
+                cover_letter=instance.cover_letter,
+                status=ApplicationStatus.REVIEWING,
+                applied_at=instance.created_at
+            )
 
-                    Для вас создан аккаунт на сайте PizzaJobs:
-                    Логин: {username}
-                    Пароль: {password}
+            # Отправляем email
+            send_mail(
+                'Ваша заявка принята в работу - PizzaJobs',
+                f'''Здравствуйте, {instance.full_name}!
 
-                    Пожалуйста, войдите в систему и заполните свой профиль.
-                    ''',
-                                    settings.EMAIL_HOST_USER,
-                                    [instance.email],
-                                    fail_silently=False,
-                                )
+                Ваша заявка на вакансию "{instance.vacancy.title}" принята в работу.
 
-                                # Создаем уведомление для кандидата
-                                Notification.objects.create(
-                                    user=user,
-                                    title="Добро пожаловать в PizzaJobs",
-                                    message=f"Для вас создан аккаунт. Ваша заявка на вакансию {instance.vacancy.title} принята в работу."
-                                )
+                Для вас создан аккаунт на сайте PizzaJobs:
+                Логин: {username}
+                Пароль: {password}
+
+                Пожалуйста, войдите в систему и заполните свой профиль.
+                ''',
+                settings.EMAIL_HOST_USER,
+                [instance.email],
+                fail_silently=False,
+            )
+
+            # Создаем уведомление для кандидата
+            Notification.objects.create(
+                user=user,
+                title="Добро пожаловать в PizzaJobs",
+                message=f"Для вас создан аккаунт. Ваша заявка на вакансию {instance.vacancy.title} принята в работу."
+            )
