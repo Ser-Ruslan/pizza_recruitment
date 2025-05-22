@@ -747,8 +747,48 @@ def quick_applications(request):
     else:
         return HttpResponseForbidden("У вас нет доступа к этой странице.")
 
+    # Check if users exist for quick applications
+    for app in quick_apps:
+        app.user_exists = User.objects.filter(email=app.email).exists()
+
     quick_apps = quick_apps.order_by('-created_at')
-    return render(request, 'hr/quick_applications.html', {'quick_applications': quick_apps})
+    context = {
+        'quick_applications': quick_apps,
+        'application_statuses': ApplicationStatus.choices,
+    }
+    return render(request, 'hr/quick_applications.html', context)
+
+@login_required
+@require_http_methods(["POST"])
+def update_quick_application_status(request, app_id):
+    quick_app = get_object_or_404(QuickApplication, id=app_id)
+    
+    # Check if user already exists
+    if User.objects.filter(email=quick_app.email).exists():
+        messages.error(request, "Невозможно изменить статус, так как для этой заявки уже создан аккаунт.")
+        return redirect('quick_applications')
+    
+    new_status = request.POST.get('status')
+    if new_status in dict(ApplicationStatus.choices):
+        quick_app.status = new_status
+        quick_app.save()
+        messages.success(request, "Статус быстрой заявки обновлен.")
+    
+    return redirect('quick_applications')
+
+@login_required
+@require_http_methods(["POST"])
+def delete_quick_application(request, app_id):
+    quick_app = get_object_or_404(QuickApplication, id=app_id)
+    
+    # Check if user already exists
+    if User.objects.filter(email=quick_app.email).exists():
+        messages.error(request, "Невозможно удалить заявку, так как для нее уже создан аккаунт.")
+        return redirect('quick_applications')
+    
+    quick_app.delete()
+    messages.success(request, "Быстрая заявка удалена.")
+    return redirect('quick_applications')
 
 @login_required
 @hr_required
@@ -837,7 +877,9 @@ def convert_quick_application(request, app_id):
                 message=f"Для вас создан аккаунт. Ваша заявка на вакансию {quick_app.vacancy.title} принята в работу."
             )
 
-        messages.success(request, 'Быстрая заявка успешно конвертирована в обычную.')
+        # Delete the quick application after successful conversion
+        quick_app.delete()
+        messages.success(request, 'Быстрая заявка успешно конвертирована в обычную и удалена.')
         return redirect('quick_applications')
 
     return HttpResponseNotAllowed(['POST'])

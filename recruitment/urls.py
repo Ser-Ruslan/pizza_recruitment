@@ -56,4 +56,6 @@ path('vacancies/<int:vacancy_id>/quick-apply/', views.quick_apply, name='quick_a
     path('notifications/', views.notifications, name='notifications'),
     path('hr/quick-applications/', views.quick_applications, name='quick_applications'),
     path('hr/quick-applications/<int:app_id>/convert/', views.convert_quick_application, name='convert_quick_application'),
+    path('hr/quick-applications/<int:app_id>/update-status/', views.update_quick_application_status, name='update_quick_application_status'),
+    path('hr/quick-applications/<int:app_id>/delete/', views.delete_quick_application, name='delete_quick_application'),
 ]

@@ -40,12 +40,23 @@
                                     </td>
                                     <td>{{ app.created_at|date:"d.m.Y H:i" }}</td>
                                     <td>
-                                        <span class="badge {% if app.status == 'NEW' %}bg-primary{% else %}bg-info{% endif %}">
-                                            {{ app.get_status_display }}
-                                        </span>
+                                        {% if not app.user_exists %}
+                                        <form method="post" action="{% url 'update_quick_application_status' app.id %}" class="d-inline">
+                                            {% csrf_token %}
+                                            <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
+                                                {% for status, label in application_statuses %}
+                                                    <option value="{{ status }}" {% if app.status == status %}selected{% endif %}>
+                                                        {{ label }}
+                                                    </option>
+                                                {% endfor %}
+                                            </select>
+                                        </form>
+                                        {% else %}
+                                            <span class="badge bg-success">Создан аккаунт</span>
+                                        {% endif %}
                                     </td>
                                     <td>
-                                        {% if user.profile.role == 'HR_MANAGER' %}
+                                        {% if user.profile.role == 'HR_MANAGER' and not app.user_exists %}
                                         <form method="post" action="{% url 'convert_quick_application' app.id %}" class="d-inline">
                                             {% csrf_token %}
                                             <button type="submit" class="btn btn-sm btn-warning" {% if app.status != 'NEW' %}disabled{% endif %}>
@@ -56,6 +67,14 @@
                                         <a href="{{ app.resume.url }}" class="btn btn-sm btn-outline-primary" target="_blank">
                                             <i class="fas fa-file-download"></i>
                                         </a>
+                                        {% if not app.user_exists %}
+                                        <form method="post" action="{% url 'delete_quick_application' app.id %}" class="d-inline" onsubmit="return confirm('Вы уверены, что хотите удалить этот быстрый отклик?');">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-danger">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
+                                        {% endif %}
                                     </td>
                                 </tr>
                             {% endfor %}
