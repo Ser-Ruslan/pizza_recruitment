@@ -723,9 +723,20 @@ def quick_apply(request, vacancy_id):
     return render(request, 'vacancies/quick_apply.html', context)
 
 @login_required
-@hr_required
 def quick_applications(request):
-    quick_apps = QuickApplication.objects.all().order_by('-created_at')
+    user_profile = request.user.profile
+    
+    if user_profile.role == UserRole.HR_MANAGER:
+        quick_apps = QuickApplication.objects.all()
+    elif user_profile.role == UserRole.RESTAURANT_MANAGER:
+        managed_restaurants = Restaurant.objects.filter(manager=request.user)
+        quick_apps = QuickApplication.objects.filter(
+            vacancy__restaurants__in=managed_restaurants
+        ).distinct()
+    else:
+        return HttpResponseForbidden("У вас нет доступа к этой странице.")
+    
+    quick_apps = quick_apps.order_by('-created_at')
     return render(request, 'hr/quick_applications.html', {'quick_applications': quick_apps})
 
 @login_required
