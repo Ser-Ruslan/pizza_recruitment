@@ -144,9 +144,23 @@ class ApplicationComment(models.Model):
     author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='application_comments')
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
+    is_approved = models.BooleanField(default=False)
+    needs_moderation = models.BooleanField(default=False)
     
     def __str__(self):
         return f"Comment by {self.author.username} on {self.application.user.username}'s application"
+    
+    def save(self, *args, **kwargs):
+        if not self.pk:  # If creating new comment
+            author_profile = self.author.profile
+            # HR and managers' comments don't need moderation
+            if author_profile.role in [UserRole.HR_MANAGER, UserRole.RESTAURANT_MANAGER]:
+                self.is_approved = True
+                self.needs_moderation = False
+            else:  # Candidate comments need moderation
+                self.needs_moderation = True
+                self.is_approved = False
+        super().save(*args, **kwargs)
 
 # Quick Application Model
 class QuickApplication(models.Model):

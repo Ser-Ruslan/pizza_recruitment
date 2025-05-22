@@ -382,6 +382,41 @@ def application_list(request):
     return render(request, 'applications/list.html', context)
 
 @login_required
+@login_required
+@require_http_methods(["POST"])
+def delete_comment(request, comment_id):
+    comment = get_object_or_404(ApplicationComment, id=comment_id)
+    
+    # Check permissions
+    if not (request.user == comment.author or 
+            request.user.profile.role in [UserRole.HR_MANAGER, UserRole.RESTAURANT_MANAGER]):
+        return HttpResponseForbidden("У вас нет прав для удаления этого комментария.")
+    
+    application_id = comment.application.id
+    comment.delete()
+    messages.success(request, "Комментарий удален.")
+    return redirect('application_detail', application_id=application_id)
+
+@login_required
+@require_http_methods(["POST"])
+def moderate_comment(request, comment_id):
+    if not request.user.profile.role in [UserRole.HR_MANAGER, UserRole.RESTAURANT_MANAGER]:
+        return HttpResponseForbidden("У вас нет прав для модерации комментариев.")
+    
+    comment = get_object_or_404(ApplicationComment, id=comment_id)
+    action = request.POST.get('action')
+    
+    if action == 'approve':
+        comment.is_approved = True
+        comment.needs_moderation = False
+        messages.success(request, "Комментарий одобрен.")
+    elif action == 'reject':
+        comment.delete()
+        messages.success(request, "Комментарий отклонен.")
+    
+    comment.save()
+    return redirect('application_detail', application_id=comment.application.id)
+
 def application_detail(request, application_id):
     # Get the application, with different access rules based on role
     application = get_object_or_404(Application, id=application_id)

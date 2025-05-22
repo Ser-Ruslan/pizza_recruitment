@@ -41,6 +41,8 @@ urlpatterns = [
 path('vacancies/<int:vacancy_id>/quick-apply/', views.quick_apply, name='quick_apply'),
     path('applications/', views.application_list, name='application_list'),
     path('applications/<int:application_id>/', views.application_detail, name='application_detail'),
+    path('comments/<int:comment_id>/delete/', views.delete_comment, name='delete_comment'),
+    path('comments/<int:comment_id>/moderate/', views.moderate_comment, name='moderate_comment'),
     
     # HR dashboard routes
     path('hr/dashboard/', views.hr_dashboard, name='hr_dashboard'),

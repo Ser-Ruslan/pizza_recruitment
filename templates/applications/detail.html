@@ -99,25 +99,63 @@
                         {% if comments %}
                             <div class="comments-list">
                                 {% for comment in comments %}
-                                    <div class="comment mb-3 pb-3 {% if not forloop.last %}border-bottom{% endif %}">
-                                        <div class="d-flex justify-content-between">
-                                            <h6>{{ comment.author.get_full_name }}</h6>
-                                            <small class="text-muted">{{ comment.created_at|date:"j F Y, H:i" }}</small>
+                                    {% if comment.is_approved or user.profile.role in 'HR_MANAGER,RESTAURANT_MANAGER'|split:',' %}
+                                        <div class="comment mb-3 pb-3 {% if not forloop.last %}border-bottom{% endif %}">
+                                            <div class="d-flex justify-content-between align-items-start">
+                                                <div>
+                                                    <h6>{{ comment.author.get_full_name }}</h6>
+                                                    {% if comment.needs_moderation %}
+                                                        <span class="badge bg-warning">На модерации</span>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="d-flex align-items-center">
+                                                    <small class="text-muted me-2">{{ comment.created_at|date:"j F Y, H:i" }}</small>
+                                                    {% if user == comment.author or user.profile.role in 'HR_MANAGER,RESTAURANT_MANAGER'|split:',' %}
+                                                        <form method="post" action="{% url 'delete_comment' comment.id %}" class="d-inline">
+                                                            {% csrf_token %}
+                                                            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Удалить комментарий?')">
+                                                                <i class="fas fa-trash"></i>
+                                                            </button>
+                                                        </form>
+                                                    {% endif %}
+                                                    {% if comment.needs_moderation and user.profile.role in 'HR_MANAGER,RESTAURANT_MANAGER'|split:',' %}
+                                                        <form method="post" action="{% url 'moderate_comment' comment.id %}" class="d-inline ms-1">
+                                                            {% csrf_token %}
+                                                            <input type="hidden" name="action" value="approve">
+                                                            <button type="submit" class="btn btn-sm btn-success">
+                                                                <i class="fas fa-check"></i>
+                                                            </button>
+                                                        </form>
+                                                        <form method="post" action="{% url 'moderate_comment' comment.id %}" class="d-inline ms-1">
+                                                            {% csrf_token %}
+                                                            <input type="hidden" name="action" value="reject">
+                                                            <button type="submit" class="btn btn-sm btn-danger">
+                                                                <i class="fas fa-times"></i>
+                                                            </button>
+                                                        </form>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                            <p class="mb-0">{{ comment.content|linebreaks }}</p>
                                         </div>
-                                        <p class="mb-0">{{ comment.content|linebreaks }}</p>
-                                    </div>
+                                    {% endif %}
                                 {% endfor %}
                             </div>
                         {% else %}
                             <p class="text-muted">Комментариев пока нет.</p>
                         {% endif %}
                         
-                        {% if comment_form %}
-                            <form method="post" class="mt-4">
-                                {% csrf_token %}
-                                <input type="hidden" name="add_comment" value="1">
-                                {{ comment_form|crispy }}
-                                <button type="submit" class="btn btn-primary">Добавить комментарий</button>
+                        <form method="post" class="mt-4">
+                            {% csrf_token %}
+                            <input type="hidden" name="add_comment" value="1">
+                            {{ comment_form|crispy }}
+                            <button type="submit" class="btn btn-primary">
+                                {% if user.profile.role == 'CANDIDATE' %}
+                                    Добавить комментарий (требует модерации)
+                                {% else %}
+                                    Добавить комментарий
+                                {% endif %}
+                            </button>ть комментарий</button>
                             </form>
                         {% endif %}
                     </div>
