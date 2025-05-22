@@ -32,7 +32,7 @@ def home(request):
     vacancy_count = Vacancy.objects.filter(is_active=True).count()
     restaurant_count = Restaurant.objects.count()
     position_types = PositionType.objects.all()[:5]  # Get 5 position types for display
-    
+
     # Get recent vacancies with statistics
     recent_vacancies = Vacancy.objects.filter(is_active=True).annotate(
         total_applications=Count('applications', distinct=True),
@@ -52,7 +52,7 @@ def home(request):
             0
         )
     ).order_by('-created_at')[:3]
-    
+
     context = {
         'vacancy_count': vacancy_count,
         'restaurant_count': restaurant_count,
@@ -67,20 +67,20 @@ def register(request):
         form = UserRegisterForm(request.POST)
         if form.is_valid():
             user = form.save()
-            
+
             # Create user profile
             UserProfile.objects.create(
                 user=user,
                 role=UserRole.CANDIDATE
             )
-            
+
             # Log in the user
             login(request, user)
             messages.success(request, 'Учетная запись успешно создана! Пожалуйста, заполните свой профиль.')
             return redirect('edit_profile')
     else:
         form = UserRegisterForm()
-    
+
     return render(request, 'registration/register.html', {'form': form})
 
 # User profile views
@@ -88,12 +88,12 @@ def register(request):
 def view_profile(request):
     user_profile = get_object_or_404(UserProfile, user=request.user)
     resumes = Resume.objects.filter(user=request.user, is_active=True)
-    
+
     # Get applications if user is a candidate
     applications = []
     if user_profile.role == UserRole.CANDIDATE:
         applications = Application.objects.filter(user=request.user).order_by('-applied_at')
-    
+
     context = {
         'profile': user_profile,
         'resumes': resumes,
@@ -104,7 +104,7 @@ def view_profile(request):
 @login_required
 def edit_profile(request):
     user_profile = get_object_or_404(UserProfile, user=request.user)
-    
+
     if request.method == 'POST':
         form = UserProfileForm(request.POST, request.FILES, instance=user_profile)
         if form.is_valid():
@@ -113,7 +113,7 @@ def edit_profile(request):
             return redirect('view_profile')
     else:
         form = UserProfileForm(instance=user_profile)
-    
+
     return render(request, 'profile/edit.html', {'form': form})
 
 # Resume management
@@ -122,13 +122,13 @@ def upload_resume(request):
     # Check if user is a candidate
     if not hasattr(request.user, 'profile') or request.user.profile.role != UserRole.CANDIDATE:
         return HttpResponseForbidden("You don't have permission to access this page.")
-        
+
     if request.method == 'POST':
         form = ResumeUploadForm(request.POST, request.FILES)
         if form.is_valid():
             resume = form.save(commit=False)
             resume.user = request.user
-            
+
             try:
                 resume.clean()  # Run validation
                 resume.save()
@@ -140,20 +140,20 @@ def upload_resume(request):
             messages.error(request, 'There was an error uploading your resume.')
     else:
         form = ResumeUploadForm()
-    
+
     return render(request, 'profile/upload_resume.html', {'form': form})
 
 @login_required
 @candidate_required
 def delete_resume(request, resume_id):
     resume = get_object_or_404(Resume, id=resume_id, user=request.user)
-    
+
     if request.method == 'POST':
         resume.is_active = False
         resume.save()
         messages.success(request, 'Резюме успешно удалено.')
         return redirect('view_profile')
-    
+
     return render(request, 'profile/delete_resume.html', {'resume': resume})
 
 # Vacancy views
@@ -162,17 +162,17 @@ def vacancy_list(request):
     city = request.GET.get('city', '')
     position_type = request.GET.get('position_type', '')
     restaurant_id = request.GET.get('restaurant', '')
-    
+
     # Start with all active vacancies
     vacancies = Vacancy.objects.filter(is_active=True)
-    
+
     # Apply filters
     if city:
         vacancies = vacancies.filter(restaurants__city=city)
-    
+
     if position_type:
         vacancies = vacancies.filter(position_type__title=position_type)
-    
+
     if restaurant_id:
         vacancies = vacancies.filter(restaurants__id=restaurant_id)
 
@@ -195,17 +195,17 @@ def vacancy_list(request):
             0
         )
     )
-    
+
     # Get unique cities and position types for filter dropdowns
     cities = Restaurant.objects.values_list('city', flat=True).distinct()
     position_types = PositionType.objects.all()
     restaurants = Restaurant.objects.all()
-    
+
     # Paginate results
     paginator = Paginator(vacancies.distinct(), 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
-    
+
     context = {
         'page_obj': page_obj,
         'cities': cities,
@@ -239,7 +239,7 @@ def vacancy_detail(request, vacancy_id):
         )
 
         vacancy_restaurants = vacancy.restaurants.all()
-        
+
 
         similar_qs = (Vacancy.objects
         .filter(is_active=True,
@@ -271,18 +271,18 @@ def vacancy_detail(request, vacancy_id):
 @candidate_required
 def apply_for_vacancy(request, vacancy_id):
     vacancy = get_object_or_404(Vacancy, id=vacancy_id, is_active=True)
-    
+
     # Check if user has already applied
     if Application.objects.filter(vacancy=vacancy, user=request.user).exists():
         messages.warning(request, 'Вы уже подали заявку на эту должность.')
         return redirect('vacancy_detail', vacancy_id=vacancy_id)
-    
+
     # Get user's active resumes
     resumes = Resume.objects.filter(user=request.user, is_active=True)
     if not resumes.exists():
         messages.warning(request, 'Пожалуйста загрузите резюме.')
         return redirect('upload_resume')
-    
+
     if request.method == 'POST':
         form = ApplicationForm(request.POST, user=request.user)
         if form.is_valid():
@@ -290,7 +290,7 @@ def apply_for_vacancy(request, vacancy_id):
             application.vacancy = vacancy
             application.user = request.user
             application.save()
-            
+
             # Create notification for restaurant managers
             for restaurant in vacancy.restaurants.all():
                 if restaurant.manager:
@@ -299,12 +299,12 @@ def apply_for_vacancy(request, vacancy_id):
                         title=f"Новая заявка на {vacancy.title}",
                         message=f"Поступила новая заявка от {request.user.get_full_name()} на вакансии {vacancy.title}."
                     )
-            
+
             messages.success(request, 'Ваша заявка успешно отправлена.')
             return redirect('vacancy_detail', vacancy_id=vacancy_id)
     else:
         form = ApplicationForm(user=request.user)
-    
+
     context = {
         'form': form,
         'vacancy': vacancy,
@@ -314,18 +314,18 @@ def apply_for_vacancy(request, vacancy_id):
 @login_required
 def application_list(request):
     user_profile = get_object_or_404(UserProfile, user=request.user)
-    
+
     # Different views based on role
     if user_profile.role == UserRole.CANDIDATE:
         # Candidates see their own applications
         applications = Application.objects.filter(user=request.user).order_by('-applied_at')
         quick_applications = []
-    
+
     elif user_profile.role == UserRole.HR_MANAGER:
         # HR managers see all applications
         applications = Application.objects.all().order_by('-applied_at')
         quick_applications = QuickApplication.objects.all().order_by('-created_at')
-    
+
     elif user_profile.role == UserRole.RESTAURANT_MANAGER:
         # Restaurant managers see applications for their restaurant's vacancies
         managed_restaurants = Restaurant.objects.filter(manager=request.user)
@@ -335,32 +335,32 @@ def application_list(request):
         quick_applications = QuickApplication.objects.filter(
             vacancy__restaurants__in=managed_restaurants
         ).distinct().order_by('-created_at')
-    
+
     else:
         # Admin sees all applications
         applications = Application.objects.all().order_by('-applied_at')
         quick_applications = QuickApplication.objects.all().order_by('-created_at')
-    
+
     # Apply filters
     status_filter = request.GET.get('status', '')
     if status_filter:
         applications = applications.filter(status=status_filter)
-    
+
     vacancy_filter = request.GET.get('vacancy', '')
     if vacancy_filter:
         applications = applications.filter(vacancy__id=vacancy_filter)
-    
+
     # Paginate results
     paginator = Paginator(applications, 20)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
-    
+
     # Get vacancies for filter dropdown
     if user_profile.role == UserRole.RESTAURANT_MANAGER:
         vacancies = Vacancy.objects.filter(restaurants__manager=request.user)
     else:
         vacancies = Vacancy.objects.all()
-    
+
     context = {
         'page_obj': page_obj,
         'statuses': ApplicationStatus.choices,
@@ -375,43 +375,43 @@ def application_detail(request, application_id):
     # Get the application, with different access rules based on role
     application = get_object_or_404(Application, id=application_id)
     user_profile = get_object_or_404(UserProfile, user=request.user)
-    
+
     # Check permissions
     if user_profile.role == UserRole.CANDIDATE:
         # Candidates can only view their own applications
         if application.user != request.user:
             return HttpResponseForbidden("You don't have permission to view this application.")
-    
+
     elif user_profile.role == UserRole.RESTAURANT_MANAGER:
         # Managers can only see applications for their restaurants
         manager_restaurants = Restaurant.objects.filter(manager=request.user)
         application_restaurants = application.vacancy.restaurants.all()
         if not any(r in manager_restaurants for r in application_restaurants):
             return HttpResponseForbidden("You don't have permission to view this application.")
-    
+
     # Get related data
     comments = ApplicationComment.objects.filter(application=application).order_by('created_at')
     interviews = Interview.objects.filter(application=application).order_by('date_time')
-    
+
     # Forms
     status_form = None
     comment_form = None
     interview_form = None
-    
+
     # Only HR and restaurant managers can update status and add comments
     if user_profile.role in [UserRole.HR_MANAGER, UserRole.RESTAURANT_MANAGER, UserRole.ADMIN]:
         status_form = ApplicationStatusForm(instance=application)
         comment_form = ApplicationCommentForm()
-        
+
         # Process status form submission
         if request.method == 'POST' and 'update_status' in request.POST:
             # Сохраняем старый статус ДО создания формы и обновления
             old_status = application.status
-            
+
             status_form = ApplicationStatusForm(request.POST, instance=application)
             if status_form.is_valid():
                 updated_application = status_form.save()
-                
+
                 # Create notification for candidate если статус изменился
                 if old_status != updated_application.status:
                     Notification.objects.create(
@@ -419,10 +419,10 @@ def application_detail(request, application_id):
                         title="Обновлён статус заявки",
                         message=f"Статус вашей заявки на {updated_application.vacancy.title} изменился на: {updated_application.get_status_display()}"
                     )
-                
+
                 messages.success(request, 'Статус заявки обновлён.')
                 return redirect('application_detail', application_id=application.id)
-        
+
         # Process comment form submission
         elif request.method == 'POST' and 'add_comment' in request.POST:
             comment_form = ApplicationCommentForm(request.POST)
@@ -431,14 +431,14 @@ def application_detail(request, application_id):
                 comment.application = application
                 comment.author = request.user
                 comment.save()  # Сигнал post_save срабатывает здесь и создает уведомления
-        
+
                 messages.success(request, 'Комментарий успешно добавлен.')
                 return redirect('application_detail', application_id=application.id)
-    
+
     # Only HR can schedule interviews
     if user_profile.role == UserRole.HR_MANAGER:
         interview_form = InterviewForm(application=application)
-        
+
         # Process interview form submission
         if request.method == 'POST' and 'schedule_interview' in request.POST:
             interview_form = InterviewForm(request.POST, application=application)
@@ -447,29 +447,29 @@ def application_detail(request, application_id):
                 interview.application = application
                 interview.scheduled_by = request.user
                 interview.save()
-                
+
                 # Update application status
                 old_status = application.status
                 application.status = ApplicationStatus.INTERVIEW_SCHEDULED
                 application.save()
-                
+
                 # Create notifications
                 Notification.objects.create(
                     user=application.user,
                     title="Собеседование назначено",
                     message=f"Для вашей заявки на {application.vacancy.title} назначено собеседование {interview.date_time.strftime('%d.%m.%Y в %H:%M')}."
                 )
-                
+
                 if interview.interviewer:
                     Notification.objects.create(
                         user=interview.interviewer,
                         title="Вас назначили интервьюером",
                         message=f"Вас назначили проводить собеседование с {application.user.get_full_name()} по вакансии {application.vacancy.title} {interview.date_time.strftime('%d.%m.%Y в %H:%M')}."
                     )
-                
+
                 messages.success(request, 'Собеседование успешно назначено.')
                 return redirect('application_detail', application_id=application.id)
-    
+
     context = {
         'application': application,
         'comments': comments,
@@ -492,20 +492,20 @@ def hr_dashboard(request):
     interviews_scheduled = Interview.objects.filter(
         date_time__gte=timezone.now()
     ).count()
-    
+
     # Recent applications
     recent_applications = Application.objects.order_by('-applied_at')[:10]
-    
+
     # Vacancies by status
     vacancies_by_status = Vacancy.objects.values('is_active').annotate(
         count=Count('id')
     )
-    
+
     # Applications by status
     applications_by_status = Application.objects.values('status').annotate(
         count=Count('id')
     )
-    
+
     context = {
         'total_vacancies': total_vacancies,
         'active_vacancies': active_vacancies,
@@ -522,31 +522,31 @@ def hr_dashboard(request):
 @hr_required
 def manage_vacancies(request):
     vacancies = Vacancy.objects.all().order_by('-created_at')
-    
+
     # Фильтрация
     status_filter = request.GET.get('status', '')
     if status_filter == 'active':
         vacancies = vacancies.filter(is_active=True)
     elif status_filter == 'inactive':
         vacancies = vacancies.filter(is_active=False)
-    
+
     position_filter = request.GET.get('position_type', '')
     if position_filter:
         vacancies = vacancies.filter(position_type__id=position_filter)
-    
+
     # Пагинация
     paginator = Paginator(vacancies, 20)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
-    
+
     # Статистика
     total = Vacancy.objects.count()
     active = Vacancy.objects.filter(is_active=True).count()
     inactive = total - active
-    
+
     # Типы позиций для фильтра
     position_types = PositionType.objects.all()
-    
+
     context = {
         'page_obj': page_obj,
         'position_types': position_types,
@@ -568,15 +568,15 @@ def create_vacancy(request):
             vacancy = form.save(commit=False)
             vacancy.created_by = request.user
             vacancy.save()
-            
+
             # Save many-to-many relationships
             form.save_m2m()
-            
+
             messages.success(request, 'Вакансия создана успешно.')
             return redirect('manage_vacancies')
     else:
         form = VacancyForm()
-    
+
     context = {
         'form': form,
         'action': 'Create',
@@ -587,7 +587,7 @@ def create_vacancy(request):
 @hr_required
 def edit_vacancy(request, vacancy_id):
     vacancy = get_object_or_404(Vacancy, id=vacancy_id)
-    
+
     if request.method == 'POST':
         form = VacancyForm(request.POST, instance=vacancy)
         if form.is_valid():
@@ -596,7 +596,7 @@ def edit_vacancy(request, vacancy_id):
             return redirect('manage_vacancies')
     else:
         form = VacancyForm(instance=vacancy)
-    
+
     context = {
         'form': form,
         'vacancy': vacancy,
@@ -611,7 +611,7 @@ def toggle_vacancy_status(request, vacancy_id):
     if request.method == 'POST':
         vacancy.is_active = not vacancy.is_active
         vacancy.save()
-        
+
         # Уведомление всем, кто подавал на эту вакансию
         status_text = "активирована" if vacancy.is_active else "деактивирована"
         for app in vacancy.applications.all():
@@ -620,7 +620,7 @@ def toggle_vacancy_status(request, vacancy_id):
                 title=f"Вакансия «{vacancy.title}» {status_text}",
                 message=f"Вакансия, на которую вы подавали заявку, была {status_text}."
             )
-        
+
         messages.success(request, f'Вакансия успешно {status_text}.')
     return redirect('manage_vacancies')
 
@@ -631,24 +631,24 @@ def toggle_vacancy_status(request, vacancy_id):
 def manager_dashboard(request):
     # Get statistics for the manager's restaurants
     managed_restaurants = Restaurant.objects.filter(manager=request.user)
-    
+
     # Recent applications for manager's restaurants
     recent_applications = Application.objects.filter(
         vacancy__restaurants__in=managed_restaurants
     ).distinct().order_by('-applied_at')[:10]
-    
+
     # Scheduled interviews
     upcoming_interviews = Interview.objects.filter(
         Q(interviewer=request.user) | 
         Q(application__vacancy__restaurants__in=managed_restaurants),
         date_time__gte=timezone.now()
     ).distinct().order_by('date_time')[:5]
-    
+
     # Applications by status
     applications_by_status = Application.objects.filter(
         vacancy__restaurants__in=managed_restaurants
     ).values('status').annotate(count=Count('id'))
-    
+
     context = {
         'managed_restaurants': managed_restaurants,
         'recent_applications': recent_applications,
@@ -694,14 +694,14 @@ def notifications(request):
 @require_http_methods(["GET", "POST"])
 def quick_apply(request, vacancy_id):
     vacancy = get_object_or_404(Vacancy, id=vacancy_id, is_active=True)
-    
+
     if request.method == 'POST':
         form = QuickApplicationForm(request.POST, request.FILES)
         if form.is_valid():
             quick_app = form.save(commit=False)
             quick_app.vacancy = vacancy
             quick_app.save()
-            
+
             # Create notifications for HR and restaurant managers
             for restaurant in vacancy.restaurants.all():
                 if restaurant.manager:
@@ -710,12 +710,12 @@ def quick_apply(request, vacancy_id):
                         title=f"Быстрый отклик на {vacancy.title}",
                         message=f"Получен быстрый отклик от {quick_app.full_name} на вакансию {vacancy.title}."
                     )
-            
+
             messages.success(request, 'Ваш отклик успешно отправлен.')
             return redirect('vacancy_detail', vacancy_id=vacancy_id)
     else:
         form = QuickApplicationForm()
-    
+
     context = {
         'form': form,
         'vacancy': vacancy,
@@ -725,7 +725,7 @@ def quick_apply(request, vacancy_id):
 @login_required
 def quick_applications(request):
     user_profile = request.user.profile
-    
+
     if user_profile.role == UserRole.HR_MANAGER:
         quick_apps = QuickApplication.objects.all()
     elif user_profile.role == UserRole.RESTAURANT_MANAGER:
@@ -735,7 +735,7 @@ def quick_applications(request):
         ).distinct()
     else:
         return HttpResponseForbidden("У вас нет доступа к этой странице.")
-    
+
     quick_apps = quick_apps.order_by('-created_at')
     return render(request, 'hr/quick_applications.html', {'quick_applications': quick_apps})
 
@@ -746,16 +746,22 @@ def convert_quick_application(request, app_id):
         quick_app = get_object_or_404(QuickApplication, id=app_id, status=ApplicationStatus.NEW)
         quick_app.status = ApplicationStatus.REVIEWING
         quick_app.save()
-        
+
         # Create user account
         username = quick_app.full_name.lower().replace(' ', '_')
         counter = 1
         while User.objects.filter(username=username).exists():
             username = f"{username}_{counter}"
             counter += 1
-        
-        password = User.objects.make_random_password()
-        
+
+        # Create user account
+        import string
+        import random
+
+        # Generate random password
+        chars = string.ascii_letters + string.digits + string.punctuation
+        password = ''.join(random.choice(chars) for _ in range(12))
+
         with transaction.atomic():
             # Create user
             user = User.objects.create_user(
@@ -763,20 +769,20 @@ def convert_quick_application(request, app_id):
                 email=quick_app.email,
                 password=password
             )
-            
+
             # Set name
             name_parts = quick_app.full_name.split(maxsplit=1)
             user.first_name = name_parts[0]
             user.last_name = name_parts[1] if len(name_parts) > 1 else ''
             user.save()
-            
+
             # Create profile
             UserProfile.objects.create(
                 user=user,
                 role=UserRole.CANDIDATE,
                 phone=quick_app.phone
             )
-            
+
             # Create resume
             resume = Resume.objects.create(
                 user=user,
@@ -784,7 +790,7 @@ def convert_quick_application(request, app_id):
                 file=quick_app.resume,
                 is_active=True
             )
-            
+
             # Create regular application
             application = Application.objects.create(
                 vacancy=quick_app.vacancy,
