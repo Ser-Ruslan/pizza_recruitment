@@ -103,11 +103,17 @@ def quick_application_status_handler(sender, instance, **kwargs):
                 counter += 1
             
             # Create user account
+            import string
+            import random
+            # Generate random password
+            chars = string.ascii_letters + string.digits + string.punctuation
+            password = ''.join(random.choice(chars) for _ in range(12))
+            
             with transaction.atomic():
                 user = User.objects.create_user(
                     username=username,
                     email=instance.email,
-                    password=User.objects.make_random_password()
+                    password=password
                 )
                 
                 # Set full name
