@@ -54,4 +54,6 @@ path('vacancies/<int:vacancy_id>/quick-apply/', views.quick_apply, name='quick_a
     
     # Notification routes
     path('notifications/', views.notifications, name='notifications'),
+    path('hr/quick-applications/', views.quick_applications, name='quick_applications'),
+    path('hr/quick-applications/<int:app_id>/convert/', views.convert_quick_application, name='convert_quick_application'),
 ]

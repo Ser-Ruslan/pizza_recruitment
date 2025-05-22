@@ -23,7 +23,7 @@
             </a>
         </div>
     </div>
-    
+
     <!-- Статистика вакансий -->
     <div class="row mb-4">
         <div class="col-md-3 mb-3">
@@ -40,7 +40,7 @@
                 </div>
             </div>
         </div>
-        
+
         <div class="col-md-3 mb-3">
             <div class="card bg-success text-white stat-card h-100 shadow">
                 <div class="card-body text-center">
@@ -55,7 +55,7 @@
                 </div>
             </div>
         </div>
-        
+
         <div class="col-md-3 mb-3">
             <div class="card bg-primary text-white stat-card h-100 shadow">
                 <div class="card-body text-center">
@@ -70,7 +70,7 @@
                 </div>
             </div>
         </div>
-        
+
         <div class="col-md-3 mb-3">
             <div class="card bg-warning text-dark stat-card h-100 shadow">
                 <div class="card-body text-center">
@@ -86,7 +86,7 @@
             </div>
         </div>
     </div>
-    
+
     <div class="row">
         <!-- Недавние отклики -->
         <div class="col-lg-7 mb-4">
@@ -141,7 +141,7 @@
                 </div>
             </div>
         </div>
-        
+
         <!-- Графики и статистика -->
         <div class="col-lg-5 mb-4">
             <div class="card shadow mb-4">
@@ -160,7 +160,7 @@
                     {% endif %}
                 </div>
             </div>
-            
+
             <div class="card shadow">
                 <div class="card-header bg-white">
                     <h3 class="card-title h5 mb-0">Вакансии по статусу</h3>
@@ -179,7 +179,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Предстоящие собеседования -->
     <div class="card shadow mb-4">
         <div class="card-header bg-white">
@@ -187,9 +187,9 @@
         </div>
         <div class="card-body">
         {% if interviews_scheduled %}
-            
+
         <i class="fas fa-calendar-alt me-2"></i>Запланировано <strong>{{ interviews_scheduled }}</strong> собеседований. Проверьте отклики для подробностей.
-        
+
     {% else %}
         <div class="alert alert-info">
             <i class="fas fa-info-circle me-2"></i>Нет предстоящих собеседований.
@@ -291,4 +291,3 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 {% endblock %}
-
