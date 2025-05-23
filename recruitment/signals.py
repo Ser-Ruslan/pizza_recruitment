@@ -1,15 +1,19 @@
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.contrib.auth import get_user_model
+
 from .models import (
     Application, ApplicationComment, Notification, Interview, 
-    UserRole, Restaurant, QuickApplication, User, UserProfile, ApplicationStatus
+    UserRole, Restaurant, QuickApplication, UserProfile, ApplicationStatus, Resume
 )
-from .models import ApplicationStatus
 from django.db import transaction
-from django.contrib.auth.models import User
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from django.conf import settings
+import string
+import random
+
+User = get_user_model()
 
 def send_notification_with_email(user, title, message):
     """
@@ -36,8 +40,6 @@ def application_notifications(sender, instance, created, **kwargs):
     if created and not hasattr(instance, '_from_quick_application'):
         vacancy = instance.vacancy
         # Уведомляем HR менеджеров
-        from django.contrib.auth import get_user_model
-        User = get_user_model()
         hr_users = User.objects.filter(profile__role=UserRole.HR_MANAGER)
         for hr in hr_users:
             send_notification_with_email(
@@ -124,10 +126,6 @@ def quick_application_status_handler(sender, instance, created, **kwargs):
     # Этот сигнал вызывается, когда меняется статус быстрой заявки
     if not created and instance.status == ApplicationStatus.REVIEWING:
         # Логика конвертации быстрой заявки в обычную
-        from .models import ApplicationStatus, Resume
-        import string
-        import random
-
         # Создаем имя пользователя на основе полного имени
         username = instance.full_name.lower().replace(' ', '_')
         counter = 1
