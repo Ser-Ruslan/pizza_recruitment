@@ -359,6 +359,10 @@ def application_list(request):
     status_filter = request.GET.get('status', '')
     if status_filter:
         applications = applications.filter(status=status_filter)
+        # Если выбраны новые заявки и их нет, но есть быстрые отклики
+        if status_filter == 'NEW' and not applications.exists() and quick_applications.filter(status='NEW').exists():
+            messages.info(request, 'Обычных новых заявок нет, но есть быстрые отклики')
+            return redirect('quick_applications')
 
     vacancy_filter = request.GET.get('vacancy', '')
     if vacancy_filter:

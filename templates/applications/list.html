@@ -156,8 +156,15 @@
                 <div class="alert alert-info">
                     <i class="fas fa-info-circle me-2"></i>
                     {% if show_quick_applications and quick_applications %}
-                        Обычные заявки не найдены, но есть быстрые отклики.
-                        <a href="{% url 'quick_applications' %}" class="alert-link">Просмотреть быстрые отклики</a>
+                        {% if selected_status == 'NEW' %}
+                            У вас нет обычных новых заявок, но есть быстрые отклики.
+                            <a href="{% url 'quick_applications' %}" class="alert-link">
+                                <i class="fas fa-bolt me-1"></i>Перейти к быстрым откликам
+                            </a>
+                        {% else %}
+                            Обычные заявки не найдены, но есть быстрые отклики.
+                            <a href="{% url 'quick_applications' %}" class="alert-link">Просмотреть быстрые отклики</a>
+                        {% endif %}
                     {% else %}
                         Заявки, соответствующие критериям, не найдены.
                         {% if user.profile.role == 'CANDIDATE' %}
