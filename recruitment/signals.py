@@ -157,6 +157,9 @@ def quick_application_handler(sender, instance, created, **kwargs):
                 is_active=True
             )
 
+            # Временно отключаем сигнал
+            post_save.disconnect(application_notifications, sender=Application)
+            
             # Создаем обычную заявку
             application = Application.objects.create(
                 vacancy=instance.vacancy,
@@ -164,9 +167,11 @@ def quick_application_handler(sender, instance, created, **kwargs):
                 resume=resume,
                 cover_letter=instance.cover_letter,
                 status=ApplicationStatus.REVIEWING,
-                applied_at=instance.created_at,
-                _from_quick_application=True  # Флаг для предотвращения дублирования уведомлений
+                applied_at=instance.created_at
             )
+            
+            # Восстанавливаем сигнал
+            post_save.connect(application_notifications, sender=Application)
 
             # Отправляем email с данными для входа
             send_mail(
