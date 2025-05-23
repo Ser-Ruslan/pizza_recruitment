@@ -503,20 +503,6 @@ def application_detail(request, application_id):
                 application.status = ApplicationStatus.INTERVIEW_SCHEDULED
                 application.save()
 
-                # Create notifications
-                Notification.objects.create(
-                    user=application.user,
-                    title="Собеседование назначено",
-                    message=f"Для вашей заявки на {application.vacancy.title} назначено собеседование {interview.date_time.strftime('%d.%m.%Y в %H:%M')}."
-                )
-
-                if interview.interviewer:
-                    Notification.objects.create(
-                        user=interview.interviewer,
-                        title="Вас назначили интервьюером",
-                        message=f"Вас назначили проводить собеседование с {application.user.get_full_name()} по вакансии {application.vacancy.title} {interview.date_time.strftime('%d.%m.%Y в %H:%M')}."
-                    )
-
                 messages.success(request, 'Собеседование успешно назначено.')
                 return redirect('application_detail', application_id=application.id)
 
