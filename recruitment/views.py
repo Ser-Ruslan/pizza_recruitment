@@ -536,9 +536,7 @@ def hr_dashboard(request):
     # Get statistics
     total_vacancies = Vacancy.objects.count()
     active_vacancies = Vacancy.objects.filter(is_active=True).count()
-    total_regular_applications = Application.objects.count()
-    total_quick_applications = QuickApplication.objects.count()
-    total_applications = total_regular_applications + total_quick_applications
+    total_applications = Application.objects.count()
     new_regular_applications = Application.objects.filter(status=ApplicationStatus.NEW).count()
     new_quick_applications = QuickApplication.objects.filter(status=ApplicationStatus.NEW).count()
     new_applications = new_regular_applications + new_quick_applications
