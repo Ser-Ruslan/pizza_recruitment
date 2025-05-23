@@ -38,6 +38,13 @@ def send_notification_with_email(user, title, message):
 def application_notifications(sender, instance, created, **kwargs):
     # Skip notifications for applications converted from quick applications
     if hasattr(instance, '_from_quick_application'):
+        # Send only welcome notification for converted applications
+        if created:
+            send_notification_with_email(
+                instance.user,
+                "Добро пожаловать в PizzaJobs",
+                f"Для вас создан аккаунт. Ваша заявка на вакансию {instance.vacancy.title} принята в работу."
+            )
         return
         
     if created:

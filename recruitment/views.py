@@ -922,14 +922,7 @@ def convert_quick_application(request, app_id):
                 fail_silently=False,
             )
 
-            # Create notification for the candidate
-            Notification.objects.create(
-                user=user,
-                title="Добро пожаловать в PizzaJobs",
-                message=f"Для вас создан аккаунт. Ваша заявка на вакансию {quick_app.vacancy.title} принята в работу."
-            )
-
-        # Delete the quick application after successful conversion
+            # Delete the quick application after successful conversion
         quick_app.delete()
         messages.success(request, 'Быстрая заявка успешно конвертирована в обычную и удалена.')
         return redirect('quick_applications')
