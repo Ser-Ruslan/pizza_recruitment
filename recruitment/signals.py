@@ -2,7 +2,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from .models import (
     Application, ApplicationComment, Notification, Interview, 
-    UserRole, Restaurant, QuickApplication, User, UserProfile
+    UserRole, Restaurant, QuickApplication, User, UserProfile, ApplicationStatus
 )
 from django.db import transaction
 from django.contrib.auth.models import User
@@ -112,8 +112,6 @@ def quick_application_status_handler(sender, instance, created, **kwargs):
     # Создаем уведомления для HR при создании быстрой заявки
     if created:
         # Уведомляем HR менеджеров
-        from django.contrib.auth import get_user_model
-        User = get_user_model()
         hr_users = User.objects.filter(profile__role=UserRole.HR_MANAGER)
         for hr in hr_users:
             send_notification_with_email(

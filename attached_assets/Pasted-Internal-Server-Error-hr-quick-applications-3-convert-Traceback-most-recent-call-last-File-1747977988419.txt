@@ -1,0 +1,28 @@
+Internal Server Error: /hr/quick-applications/3/convert/
+Traceback (most recent call last):
+  File "/home/runner/workspace/.pythonlibs/lib/python3.12/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.12/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.12/site-packages/django/contrib/auth/decorators.py", line 59, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/recruitment/decorators.py", line 23, in wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/recruitment/views.py", line 849, in convert_quick_application
+    quick_app.save()
+  File "/home/runner/workspace/.pythonlibs/lib/python3.12/site-packages/django/db/models/base.py", line 902, in save
+    self.save_base(
+  File "/home/runner/workspace/.pythonlibs/lib/python3.12/site-packages/django/db/models/base.py", line 1023, in save_base
+    post_save.send(
+  File "/home/runner/workspace/.pythonlibs/lib/python3.12/site-packages/django/dispatch/dispatcher.py", line 189, in send
+    response = receiver(signal=self, sender=sender, **named)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/recruitment/signals.py", line 126, in quick_application_status_handler
+    if not created and instance.status == ApplicationStatus.REVIEWING:
+                                          ^^^^^^^^^^^^^^^^^
+UnboundLocalError: cannot access local variable 'ApplicationStatus' where it is not associated with a value
+[23/May/2025 05:23:41] "POST /hr/quick-applications/3/convert/ HTTP/1.1" 500 111031
