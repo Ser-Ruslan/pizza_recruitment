@@ -823,12 +823,6 @@ def update_quick_application_status(request, app_id):
 @require_http_methods(["POST"])
 def delete_quick_application(request, app_id):
     quick_app = get_object_or_404(QuickApplication, id=app_id)
-    
-    # Check if user already exists
-    if User.objects.filter(email=quick_app.email).exists():
-        messages.error(request, "Невозможно удалить заявку, так как для нее уже создан аккаунт.")
-        return redirect('quick_applications')
-    
     quick_app.delete()
     messages.success(request, "Быстрая заявка удалена.")
     return redirect('quick_applications')
