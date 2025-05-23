@@ -15,6 +15,16 @@ class QuickApplicationForm(forms.ModelForm):
     class Meta:
         model = QuickApplication
         fields = ['full_name', 'email', 'phone', 'resume', 'cover_letter']
+        widgets = {
+            'cover_letter': forms.Textarea(attrs={'rows': 3}),
+        }
+        labels = {
+            'full_name': _('ФИО'),
+            'email': _('Email'),
+            'phone': _('Телефон'),
+            'resume': _('Резюме'),
+            'cover_letter': _('Сопроводительное письмо'),
+        }
 
     def clean_email(self):
         email = self.cleaned_data.get('email')
@@ -27,16 +37,6 @@ class QuickApplicationForm(forms.ModelForm):
         if UserProfile.objects.filter(phone=phone).exists():
             raise forms.ValidationError('Пользователь с таким номером телефона уже зарегистрирован')
         return phone
-        widgets = {
-            'cover_letter': forms.Textarea(attrs={'rows': 3}),
-        }
-        labels = {
-            'full_name': _('ФИО'),
-            'email': _('Email'),
-            'phone': _('Телефон'),
-            'resume': _('Резюме'),
-            'cover_letter': _('Сопроводительное письмо'),
-        }
 
     def clean_resume(self):
         resume = self.cleaned_data.get('resume')

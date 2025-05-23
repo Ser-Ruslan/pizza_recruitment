@@ -44,7 +44,7 @@
                 <div class="col-12">
                     <button type="submit" class="btn btn-primary">Применить фильтры</button>
                     <a href="{% url 'application_list' %}" class="btn btn-secondary">Сбросить фильтры</a>
-                    {% if user.profile.role == 'HR' or user.profile.role == 'RESTAURANT_MANAGER' %}
+                    {% if user.profile.role == 'HR_MANAGER' or user.profile.role == 'RESTAURANT_MANAGER' %}
                     <a href="{% url 'quick_applications' %}" class="btn btn-warning">
                         <i class="fas fa-bolt me-2"></i>Быстрые заявки
                     </a>

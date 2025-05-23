@@ -29,7 +29,7 @@
                                         <p><strong>Должность:</strong> {{ vacancy.title }}</p>
                                         <p><strong>Тип:</strong> {{ vacancy.position_type.title }}</p>
                                         <p>
-                                            <strong>Рестораны:</strong>
+                                            <strong>Пицерии:</strong>
                                             {% for restaurant in vacancy.restaurants.all %}
                                                 {{ restaurant.name }}{% if not forloop.last %}, {% endif %}
                                             {% endfor %}
