@@ -154,9 +154,15 @@
                 {% endif %}
             {% else %}
                 <div class="alert alert-info">
-                    <i class="fas fa-info-circle me-2"></i>Заявки, соответствующие критериям, не найдены.
-                    {% if user.profile.role == 'CANDIDATE' %}
-                        <a href="{% url 'vacancy_list' %}" class="alert-link">Просмотрите вакансии</a>, чтобы откликнуться.
+                    <i class="fas fa-info-circle me-2"></i>
+                    {% if show_quick_applications and quick_applications %}
+                        Обычные заявки не найдены, но есть быстрые отклики.
+                        <a href="{% url 'quick_applications' %}" class="alert-link">Просмотреть быстрые отклики</a>
+                    {% else %}
+                        Заявки, соответствующие критериям, не найдены.
+                        {% if user.profile.role == 'CANDIDATE' %}
+                            <a href="{% url 'vacancy_list' %}" class="alert-link">Просмотрите вакансии</a>, чтобы откликнуться.
+                        {% endif %}
                     {% endif %}
                 </div>
             {% endif %}

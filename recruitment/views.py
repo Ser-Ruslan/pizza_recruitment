@@ -331,11 +331,13 @@ def application_list(request):
         # Candidates see their own applications
         applications = Application.objects.filter(user=request.user).order_by('-applied_at')
         quick_applications = []
+        show_quick_applications = False
 
     elif user_profile.role == UserRole.HR_MANAGER:
         # HR managers see all applications
         applications = Application.objects.all().order_by('-applied_at')
         quick_applications = QuickApplication.objects.all().order_by('-created_at')
+        show_quick_applications = True
 
     elif user_profile.role == UserRole.RESTAURANT_MANAGER:
         # Restaurant managers see applications for their restaurant's vacancies
@@ -346,6 +348,7 @@ def application_list(request):
         quick_applications = QuickApplication.objects.filter(
             vacancy__restaurants__in=managed_restaurants
         ).distinct().order_by('-created_at')
+        show_quick_applications = True
 
     else:
         # Admin sees all applications
