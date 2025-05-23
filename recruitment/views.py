@@ -379,12 +379,16 @@ def application_list(request):
     else:
         vacancies = Vacancy.objects.all()
 
+    # Check if there are new quick applications
+    has_new_quick_applications = QuickApplication.objects.filter(status=ApplicationStatus.NEW).exists()
+    
     context = {
         'page_obj': page_obj,
         'statuses': ApplicationStatus.choices,
         'vacancies': vacancies,
         'selected_status': status_filter,
         'selected_vacancy': vacancy_filter,
+        'has_new_quick_applications': has_new_quick_applications,
     }
     return render(request, 'applications/list.html', context)
 

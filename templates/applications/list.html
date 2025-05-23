@@ -54,6 +54,17 @@
         </div>
     </div>
 
+    <!-- Уведомление о быстрых откликах -->
+    {% if has_new_quick_applications and user.profile.role != 'CANDIDATE' %}
+    <div class="alert alert-warning mb-4">
+        <i class="fas fa-bolt me-2"></i>
+        <strong>Внимание!</strong> Есть новые быстрые отклики.
+        <a href="{% url 'quick_applications' %}" class="alert-link">
+            <i class="fas fa-arrow-right ms-2"></i>Перейти к быстрым откликам
+        </a>
+    </div>
+    {% endif %}
+
     <!-- Список заявок -->
     <div class="card shadow">
         <div class="card-body">
