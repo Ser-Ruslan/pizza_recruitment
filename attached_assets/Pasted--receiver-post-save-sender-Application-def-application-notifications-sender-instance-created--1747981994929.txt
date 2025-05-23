@@ -1,0 +1,104 @@
+@receiver(post_save, sender=Application)
+def application_notifications(sender, instance, created, **kwargs):
+    # Skip notifications for applications converted from quick applications
+    if hasattr(instance, '_from_quick_application'):
+        # Send only welcome notification for converted applications
+        if created:
+            send_notification_with_email(
+                instance.user,
+                "Добро пожаловать в PizzaJobs",
+                f"Для вас создан аккаунт. Ваша заявка на вакансию {instance.vacancy.title} принята в работу."
+            )
+        return
+        
+    if created:
+        vacancy = instance.vacancy
+        # Уведомляем HR менеджеров
+        hr_users = User.objects.filter(profile__role=UserRole.HR_MANAGER)
+        for hr in hr_users:
+            send_notification_with_email(
+                hr,
+                f"Новая заявка на «{vacancy.title}»",
+                f"{instance.user.get_full_name()} подал(а) заявку на «{vacancy.title}»."
+            )
+
+        # Уведомляем менеджеров ресторанов
+        for restaurant in vacancy.restaurants.all():
+            if restaurant.manager:
+                send_notification_with_email(
+                    restaurant.manager,
+                    f"Новая заявка на {vacancy.title}",
+                    f"Поступила заявка от {instance.user.get_full_name()} на «{vacancy.title}»."
+                )
+    
+    elif instance.status == ApplicationStatus.INTERVIEW:
+        if not hasattr(instance, '_interview_notification_sent'):
+            send_notification_with_email(
+                instance.user,
+                "Приглашение на собеседование",
+                f"Вас пригласили на собеседование на должность {instance.vacancy.title}. Проверьте расписание.",
+                email_subject="Приглашение на собеседование - PizzaJobs"
+            )
+            # Prevent duplicate notifications
+            instance._interview_notification_sent = True
+    
+    elif instance.status == ApplicationStatus.HIRED:
+        if not hasattr(instance, '_hired_notification_sent'):
+            vacancy = instance.vacancy
+            send_notification_with_email(
+                instance.user,
+                f"Поздравляем! Вы приняты на должность {vacancy.title}",
+                f"Поздравляем! Вы приняты на должность {vacancy.title}. С вами свяжутся для оформления документов.",
+                email_subject="Вы приняты на работу - PizzaJobs"
+            )
+            # Prevent duplicate notifications
+            instance._hired_notification_sent = True
+    
+    elif instance.status == ApplicationStatus.REJECTED:
+        if not hasattr(instance, '_rejected_notification_sent'):
+            vacancy = instance.vacancy
+            send_notification_with_email(
+                instance.user,
+                f"Обновление статуса заявки на {vacancy.title}",
+                f"К сожалению, ваша заявка на должность {vacancy.title} была отклонена. Желаем удачи в поиске работы!",
+                email_subject="Обновление статуса заявки - PizzaJobs"
+            )
+            # Prevent duplicate notifications
+            instance._rejected_notification_sent = True
+
+@receiver(post_save, sender=Interview)
+def interview_notifications(sender, instance, created, **kwargs):
+    if created:
+        # Уведомление для кандидата
+        send_notification_with_email(
+            instance.application.user,
+            "Назначено собеседование",
+            f"Для вас назначено собеседование на должность {instance.application.vacancy.title} "
+            f"на {instance.date_time.strftime('%d.%m.%Y в %H:%M')}",
+            email_subject="Назначено собеседование - PizzaJobs",
+            email_body=(
+                f"Здравствуйте, {instance.application.user.get_full_name()}!\n\n"
+                f"Для вас назначено собеседование на должность {instance.application.vacancy.title} "
+                f"на {instance.date_time.strftime('%d.%m.%Y в %H:%M')}.\n\n"
+                f"Формат: {instance.get_interview_type_display()}\n"
+                f"Детали: {instance.details}\n\n"
+                f"С уважением,\nКоманда PizzaJobs"
+            )
+        )
+        
+        # Уведомление для интервьюера
+        if instance.interviewer:
+            send_notification_with_email(
+                instance.interviewer,
+                "Вы назначены интервьюером",
+                f"Вы назначены интервьюером для {instance.application.user.get_full_name()} "
+                f"на должность {instance.application.vacancy.title} "
+                f"на {instance.date_time.strftime('%d.%m.%Y в %H:%M')}",
+                email_subject="Вы назначены интервьюером - PizzaJobs"
+            )
+        
+        # Меняем статус заявки на "Интервью"
+        if instance.application.status != ApplicationStatus.INTERVIEW:
+            instance.application.status = ApplicationStatus.INTERVIEW
+            instance.application._interview_notification_sent = True
+            instance.application.save()
