@@ -198,5 +198,23 @@ def quick_application_handler(sender, instance, created, **kwargs):
                 f"Для вас создан аккаунт. Ваша заявка на вакансию {instance.vacancy.title} принята в работу."
             )
 
+            # Уведомляем HR менеджеров
+            hr_users = User.objects.filter(profile__role=UserRole.HR_MANAGER)
+            for hr in hr_users:
+                send_notification_with_email(
+                    hr,
+                    f"Быстрая заявка преобразована в обычную",
+                    f"Быстрая заявка от {instance.full_name} на вакансию {instance.vacancy.title} была преобразована в обычную заявку."
+                )
+
+            # Уведомляем менеджеров ресторанов
+            for restaurant in instance.vacancy.restaurants.all():
+                if restaurant.manager:
+                    send_notification_with_email(
+                        restaurant.manager,
+                        f"Быстрая заявка преобразована в обычную",
+                        f"Быстрая заявка от {instance.full_name} на вакансию {instance.vacancy.title} была преобразована в обычную заявку."
+                    )
+
             # Удаляем быструю заявку
             instance.delete()
