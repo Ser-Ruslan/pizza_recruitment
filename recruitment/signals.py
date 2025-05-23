@@ -15,24 +15,26 @@ import random
 
 User = get_user_model()
 
-def send_notification_with_email(user, title, message):
+def send_notification_with_email(user, title, message, send_email=True):
     """
-    Creates a notification and sends an email to the user.
+    Creates a notification and optionally sends an email to the user.
     """
+    # Create notification
     Notification.objects.create(
         user=user,
         title=title,
         message=message
     )
 
-    # Send email
-    send_mail(
-        title,
-        message,
-        settings.EMAIL_HOST_USER,
-        [user.email],
-        fail_silently=False,
-    )
+    # Send email only if requested
+    if send_email:
+        send_mail(
+            title,
+            message,
+            settings.EMAIL_HOST_USER,
+            [user.email],
+            fail_silently=False,
+        )
 
 @receiver(post_save, sender=Application)
 def application_notifications(sender, instance, created, **kwargs):
@@ -55,7 +57,8 @@ def application_notifications(sender, instance, created, **kwargs):
             send_notification_with_email(
                 hr,
                 f"Новая заявка на «{vacancy.title}»",
-                f"{instance.user.get_full_name()} подал(а) заявку на «{vacancy.title}»."
+                f"{instance.user.get_full_name()} подал(а) заявку на «{vacancy.title}».",
+                send_email=False
             )
 
         # Уведомляем менеджеров ресторанов

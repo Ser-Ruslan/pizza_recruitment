@@ -813,13 +813,12 @@ def quick_applications(request):
 def update_quick_application_status(request, app_id):
     quick_app = get_object_or_404(QuickApplication, id=app_id)
     
-    # Check if user already exists
-    if User.objects.filter(email=quick_app.email).exists():
-        messages.error(request, "Невозможно изменить статус, так как для этой заявки уже создан аккаунт.")
-        return redirect('quick_applications')
-    
     new_status = request.POST.get('status')
     if new_status in dict(ApplicationStatus.choices):
+        if new_status == ApplicationStatus.REVIEWING:
+            messages.error(request, "Для перевода в работу используйте кнопку 'Взять в работу'")
+            return redirect('quick_applications')
+            
         quick_app.status = new_status
         quick_app.save()
         messages.success(request, "Статус быстрой заявки обновлен.")
