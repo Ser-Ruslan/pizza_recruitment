@@ -4,6 +4,7 @@ from .models import (
     Application, ApplicationComment, Notification, Interview, 
     UserRole, Restaurant, QuickApplication, User, UserProfile, ApplicationStatus
 )
+from .models import ApplicationStatus
 from django.db import transaction
 from django.contrib.auth.models import User
 from django.core.mail import send_mail
