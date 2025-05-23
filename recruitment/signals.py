@@ -1,20 +1,23 @@
+
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from .models import (
     Application, ApplicationComment, Notification, Interview, 
     UserRole, Restaurant, QuickApplication, User, UserProfile, ApplicationStatus
 )
-from .models import ApplicationStatus
 from django.db import transaction
 from django.contrib.auth.models import User
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from django.conf import settings
+import string
+import random
 
 def send_notification_with_email(user, title, message):
     """
     Creates a notification and sends an email to the user.
     """
+    # Create notification
     Notification.objects.create(
         user=user,
         title=title,
@@ -36,8 +39,6 @@ def application_notifications(sender, instance, created, **kwargs):
     if created and not hasattr(instance, '_from_quick_application'):
         vacancy = instance.vacancy
         # Уведомляем HR менеджеров
-        from django.contrib.auth import get_user_model
-        User = get_user_model()
         hr_users = User.objects.filter(profile__role=UserRole.HR_MANAGER)
         for hr in hr_users:
             send_notification_with_email(
@@ -62,20 +63,13 @@ def interview_notifications(sender, instance, created, **kwargs):
         send_notification_with_email(
             user,
             "Собеседование назначено",
-            (
-                f"Для вашей заявки «{instance.application.vacancy.title}» "
-                f"назначено собеседование {instance.date_time.strftime('%d.%m.%Y в %H:%M')}."
-            )
+            f"Для вашей заявки «{instance.application.vacancy.title}» назначено собеседование {instance.date_time.strftime('%d.%m.%Y в %H:%M')}."
         )
         if instance.interviewer:
             send_notification_with_email(
                 instance.interviewer,
                 "Вас назначили интервьюером",
-                (
-                    f"Вас назначили интервьюером для {user.get_full_name()} "
-                    f"по вакансии «{instance.application.vacancy.title}» "
-                    f"{instance.date_time.strftime('%d.%m.%Y в %H:%M')}."
-                )
+                f"Вас назначили интервьюером для {user.get_full_name()} по вакансии «{instance.application.vacancy.title}» {instance.date_time.strftime('%d.%m.%Y в %H:%M')}."
             )
 
 @receiver(post_save, sender=ApplicationComment)
@@ -84,9 +78,6 @@ def comment_notifications(sender, instance, created, **kwargs):
         application = instance.application
         author = instance.author
         author_role = author.profile.role if hasattr(author, 'profile') else None
-
-        from django.contrib.auth import get_user_model
-        User = get_user_model()
 
         # Если комментарий от менеджера ресторана, уведомляем HR-менеджеров
         if author_role == UserRole.RESTAURANT_MANAGER:
@@ -109,10 +100,9 @@ def comment_notifications(sender, instance, created, **kwargs):
                     )
 
 @receiver(post_save, sender=QuickApplication)
-def quick_application_status_handler(sender, instance, created, **kwargs):
-    # Создаем уведомления для HR при создании быстрой заявки
+def quick_application_handler(sender, instance, created, **kwargs):
     if created:
-        # Уведомляем HR менеджеров
+        # Уведомляем HR менеджеров о новой быстрой заявке
         hr_users = User.objects.filter(profile__role=UserRole.HR_MANAGER)
         for hr in hr_users:
             send_notification_with_email(
@@ -120,27 +110,25 @@ def quick_application_status_handler(sender, instance, created, **kwargs):
                 f"Новый быстрый отклик на {instance.vacancy.title}",
                 f"Получен быстрый отклик от {instance.full_name} на вакансию {instance.vacancy.title}."
             )
-
-    # Этот сигнал вызывается, когда меняется статус быстрой заявки
-    if not created and instance.status == ApplicationStatus.REVIEWING:
-        # Логика конвертации быстрой заявки в обычную
-        from .models import ApplicationStatus, Resume
-        import string
-        import random
-
-        # Создаем имя пользователя на основе полного имени
-        username = instance.full_name.lower().replace(' ', '_')
-        counter = 1
-        while User.objects.filter(username=username).exists():
-            username = f"{username}_{counter}"
-            counter += 1
-
-        # Вместо User.objects.make_random_password() используем собственную генерацию
-        # Генерируем случайный пароль
-        chars = string.ascii_letters + string.digits + string.punctuation
-        password = ''.join(random.choice(chars) for _ in range(12))
+    
+    # Если статус изменился на REVIEWING, создаем аккаунт и обычную заявку
+    elif instance.status == ApplicationStatus.REVIEWING:
+        # Проверяем, что пользователь еще не существует
+        if User.objects.filter(email=instance.email).exists():
+            return
 
         with transaction.atomic():
+            # Создаем имя пользователя
+            username = instance.full_name.lower().replace(' ', '_')
+            counter = 1
+            while User.objects.filter(username=username).exists():
+                username = f"{username}_{counter}"
+                counter += 1
+
+            # Генерируем пароль
+            chars = string.ascii_letters + string.digits + string.punctuation
+            password = ''.join(random.choice(chars) for _ in range(12))
+
             # Создаем пользователя
             user = User.objects.create_user(
                 username=username,
@@ -176,22 +164,23 @@ def quick_application_status_handler(sender, instance, created, **kwargs):
                 resume=resume,
                 cover_letter=instance.cover_letter,
                 status=ApplicationStatus.REVIEWING,
-                applied_at=instance.created_at
+                applied_at=instance.created_at,
+                _from_quick_application=True  # Флаг для предотвращения дублирования уведомлений
             )
 
-            # Отправляем email
+            # Отправляем email с данными для входа
             send_mail(
                 'Ваша заявка принята в работу - PizzaJobs',
                 f'''Здравствуйте, {instance.full_name}!
 
-                Ваша заявка на вакансию "{instance.vacancy.title}" принята в работу.
+Ваша заявка на вакансию "{instance.vacancy.title}" принята в работу.
 
-                Для вас создан аккаунт на сайте PizzaJobs:
-                Логин: {username}
-                Пароль: {password}
+Для вас создан аккаунт на сайте PizzaJobs:
+Логин: {username}
+Пароль: {password}
 
-                Пожалуйста, войдите в систему и заполните свой профиль.
-                ''',
+Пожалуйста, войдите в систему и заполните свой профиль.
+''',
                 settings.EMAIL_HOST_USER,
                 [instance.email],
                 fail_silently=False,
@@ -203,3 +192,6 @@ def quick_application_status_handler(sender, instance, created, **kwargs):
                 "Добро пожаловать в PizzaJobs",
                 f"Для вас создан аккаунт. Ваша заявка на вакансию {instance.vacancy.title} принята в работу."
             )
+
+            # Удаляем быструю заявку
+            instance.delete()

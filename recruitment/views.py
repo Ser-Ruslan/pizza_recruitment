@@ -302,14 +302,7 @@ def apply_for_vacancy(request, vacancy_id):
             application.user = request.user
             application.save()
 
-            # Create notification for restaurant managers
-            for restaurant in vacancy.restaurants.all():
-                if restaurant.manager:
-                    Notification.objects.create(
-                        user=restaurant.manager,
-                        title=f"Новая заявка на {vacancy.title}",
-                        message=f"Поступила новая заявка от {request.user.get_full_name()} на вакансии {vacancy.title}."
-                    )
+            # Notifications will be handled by signals
 
             messages.success(request, 'Ваша заявка успешно отправлена.')
             return redirect('vacancy_detail', vacancy_id=vacancy_id)
@@ -845,93 +838,16 @@ def delete_quick_application(request, app_id):
 def convert_quick_application(request, app_id):
     if request.method == 'POST':
         quick_app = get_object_or_404(QuickApplication, id=app_id, status=ApplicationStatus.NEW)
+        
+        # Check if user already exists
+        if User.objects.filter(email=quick_app.email).exists():
+            messages.error(request, "Пользователь с таким email уже существует.")
+            return redirect('quick_applications')
+            
         quick_app.status = ApplicationStatus.REVIEWING
         quick_app.save()
-
-        # Create user account
-        username = quick_app.full_name.lower().replace(' ', '_')
-        counter = 1
-        while User.objects.filter(username=username).exists():
-            username = f"{username}_{counter}"
-            counter += 1
-
-        # Create user account
-        import string
-        import random
-
-        # Generate random password
-        chars = string.ascii_letters + string.digits + string.punctuation
-        password = ''.join(random.choice(chars) for _ in range(12))
-
-        with transaction.atomic():
-            # Create user
-            user = User.objects.create_user(
-                username=username,
-                email=quick_app.email,
-                password=password
-            )
-
-            # Set name
-            name_parts = quick_app.full_name.split(maxsplit=1)
-            user.first_name = name_parts[0]
-            user.last_name = name_parts[1] if len(name_parts) > 1 else ''
-            user.save()
-
-            # Create profile
-            UserProfile.objects.create(
-                user=user,
-                role=UserRole.CANDIDATE,
-                phone=quick_app.phone
-            )
-
-            # Create resume
-            resume = Resume.objects.create(
-                user=user,
-                title=f"Резюме от {quick_app.created_at.strftime('%d.%m.%Y')}",
-                file=quick_app.resume,
-                is_active=True
-            )
-
-            # Create regular application
-            application = Application.objects.create(
-                vacancy=quick_app.vacancy,
-                user=user,
-                resume=resume,
-                cover_letter=quick_app.cover_letter,
-                status=ApplicationStatus.REVIEWING,
-                applied_at=quick_app.created_at
-            )
-            # Устанавливаем флаг для предотвращения дублирования уведомлений
-            application._from_quick_application = True
-
-            # Send email
-            send_mail(
-                'Ваша заявка принята в работу - PizzaJobs',
-                f'''Здравствуйте, {quick_app.full_name}!
-
-Ваша заявка на вакансию "{quick_app.vacancy.title}" принята в работу.
-
-Для вас создан аккаунт на сайте PizzaJobs:
-Логин: {username}
-Пароль: {password}
-
-Пожалуйста, войдите в систему и заполните свой профиль.
-''',
-                settings.EMAIL_HOST_USER,
-                [quick_app.email],
-                fail_silently=False,
-            )
-
-            # Create notification for the candidate
-            Notification.objects.create(
-                user=user,
-                title="Добро пожаловать в PizzaJobs",
-                message=f"Для вас создан аккаунт. Ваша заявка на вакансию {quick_app.vacancy.title} принята в работу."
-            )
-
-        # Delete the quick application after successful conversion
-        quick_app.delete()
-        messages.success(request, 'Быстрая заявка успешно конвертирована в обычную и удалена.')
+        
+        messages.success(request, 'Быстрая заявка успешно взята в работу.')
         return redirect('quick_applications')
 
     return HttpResponseNotAllowed(['POST'])
