@@ -537,10 +537,9 @@ def hr_dashboard(request):
     total_vacancies = Vacancy.objects.count()
     active_vacancies = Vacancy.objects.filter(is_active=True).count()
     total_applications = Application.objects.count()
-    new_applications = (
-        Application.objects.filter(status=ApplicationStatus.NEW).count() +
-        QuickApplication.objects.filter(status=ApplicationStatus.NEW).count()
-    )
+    new_regular_applications = Application.objects.filter(status=ApplicationStatus.NEW).count()
+    new_quick_applications = QuickApplication.objects.filter(status=ApplicationStatus.NEW).count()
+    new_applications = new_regular_applications + new_quick_applications
     interviews_scheduled = Interview.objects.filter(
         date_time__gte=timezone.now()
     ).count()
