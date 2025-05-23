@@ -562,6 +562,8 @@ def hr_dashboard(request):
         'active_vacancies': active_vacancies,
         'total_applications': total_applications,
         'new_applications': new_applications,
+        'new_regular_applications': new_regular_applications,
+        'new_quick_applications': new_quick_applications,
         'interviews_scheduled': interviews_scheduled,
         'recent_applications': recent_applications,
         'vacancies_by_status': vacancies_by_status,
