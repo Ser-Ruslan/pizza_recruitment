@@ -3,7 +3,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from .models import (
     Application, ApplicationComment, Notification, Interview, 
-    UserRole, Restaurant, QuickApplication, User, UserProfile, ApplicationStatus
+    UserRole, Restaurant, QuickApplication, User, UserProfile, ApplicationStatus, Resume
 )
 from django.db import transaction
 from django.contrib.auth.models import User
