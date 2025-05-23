@@ -36,8 +36,11 @@ def send_notification_with_email(user, title, message):
 
 @receiver(post_save, sender=Application)
 def application_notifications(sender, instance, created, **kwargs):
-    # Проверяем, что это не конвертация из быстрой заявки
-    if created and not hasattr(instance, '_from_quick_application'):
+    # Skip notifications for applications converted from quick applications
+    if hasattr(instance, '_from_quick_application'):
+        return
+        
+    if created:
         vacancy = instance.vacancy
         # Уведомляем HR менеджеров
         hr_users = User.objects.filter(profile__role=UserRole.HR_MANAGER)
