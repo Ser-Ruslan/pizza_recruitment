@@ -534,7 +534,10 @@ def hr_dashboard(request):
     total_vacancies = Vacancy.objects.count()
     active_vacancies = Vacancy.objects.filter(is_active=True).count()
     total_applications = Application.objects.count()
-    new_applications = Application.objects.filter(status=ApplicationStatus.NEW).count()
+    new_applications = (
+        Application.objects.filter(status=ApplicationStatus.NEW).count() +
+        QuickApplication.objects.filter(status=ApplicationStatus.NEW).count()
+    )
     interviews_scheduled = Interview.objects.filter(
         date_time__gte=timezone.now()
     ).count()
@@ -886,6 +889,8 @@ def convert_quick_application(request, app_id):
                 status=ApplicationStatus.REVIEWING,
                 applied_at=quick_app.created_at
             )
+            # Устанавливаем флаг для предотвращения дублирования уведомлений
+            application._from_quick_application = True
 
             # Send email
             send_mail(

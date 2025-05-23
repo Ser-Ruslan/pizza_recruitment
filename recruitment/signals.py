@@ -31,7 +31,8 @@ def send_notification_with_email(user, title, message):
 
 @receiver(post_save, sender=Application)
 def application_notifications(sender, instance, created, **kwargs):
-    if created:
+    # Проверяем, что это не конвертация из быстрой заявки
+    if created and not hasattr(instance, '_from_quick_application'):
         vacancy = instance.vacancy
         # Уведомляем HR менеджеров
         from django.contrib.auth import get_user_model
