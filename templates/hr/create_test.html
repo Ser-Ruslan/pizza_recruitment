@@ -1,27 +1,26 @@
-
 {% extends 'base.html' %}
 
 {% block content %}
 <div class="container mt-4">
-    <h2>Создать тест для вакансии "{{ vacancy.title }}"</h2>
-    
+    <h2>Создать тест для позиции "{{ position_type.title }}"</h2>
+
     <form id="testForm" method="POST">
         {% csrf_token %}
         <div class="mb-3">
             <label class="form-label">Название теста</label>
             <input type="text" name="title" class="form-control" required>
         </div>
-        
+
         <div class="mb-3">
             <label class="form-label">Описание теста</label>
             <textarea name="description" class="form-control" rows="3" required></textarea>
         </div>
-        
+
         <div class="mb-3">
             <label class="form-label">Ограничение по времени (в минутах)</label>
             <input type="number" name="time_limit" class="form-control" required>
         </div>
-        
+
         <div class="mb-3">
             <label class="form-label">Проходной балл (%)</label>
             <input type="number" name="passing_score" class="form-control" required min="0" max="100" value="70">
@@ -36,15 +35,14 @@
         </button>
 
         <div class="d-flex justify-content-between">
-            <a href="{% url 'vacancy_detail' vacancy.id %}" class="btn btn-secondary">Отмена</a>
+            <a href="{% url 'manage_tests' %}" class="btn btn-secondary">Отмена</a>
             <button type="submit" class="btn btn-primary">Создать тест</button>
         </div>
     </form>
 </div>
 
-{% block extra_js %}
 <script>
-let questionCount = 0;
+var questionCount = 0;
 
 function addQuestion() {
     const questionsDiv = document.getElementById('questions');
@@ -91,7 +89,7 @@ document.getElementById('testForm').onsubmit = function(e) {
     e.preventDefault();
     const formData = new FormData(this);
     const questions = [];
-    
+
     for(let i = 0; i < questionCount; i++) {
         const questionData = {
             text: formData.get(`questions[${i}][text]`),
@@ -109,7 +107,7 @@ document.getElementById('testForm').onsubmit = function(e) {
         };
         if(questionData.text) questions.push(questionData);
     }
-    
+
     const input = document.createElement('input');
     input.type = 'hidden';
     input.name = 'questions';
@@ -118,5 +116,4 @@ document.getElementById('testForm').onsubmit = function(e) {
     this.submit();
 };
 </script>
-{% endblock %}
 {% endblock %}

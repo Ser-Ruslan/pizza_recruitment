@@ -172,6 +172,8 @@ class QuickApplication(models.Model):
     cover_letter = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=20, choices=ApplicationStatus.choices, default=ApplicationStatus.NEW)
+    test_token = models.CharField(max_length=50, blank=True, null=True, unique=True)
+    user_created = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_from_quick_apps')
 
     def __str__(self):
         return f"Quick application from {self.full_name} for {self.vacancy.title}"

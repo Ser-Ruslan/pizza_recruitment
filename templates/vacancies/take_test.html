@@ -1,0 +1,196 @@
+
+{% extends 'base.html' %}
+
+{% block title %}{{ test.title }} - PizzaJobs{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h3 class="mb-0">{{ test.title }}</h3>
+                            <p class="mb-0">{{ test.description }}</p>
+                        </div>
+                        <div class="text-end">
+                            <div id="timer" class="h4 mb-0">
+                                <i class="fas fa-clock me-2"></i>
+                                <span id="timeDisplay">{{ test.time_limit }}:00</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <strong>Время на прохождение:</strong> {{ test.time_limit }} минут
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Проходной балл:</strong> {{ test.passing_score }}%
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Progress Bar -->
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span><strong>Прогресс прохождения теста:</strong></span>
+                            <span id="progressText">0 из {{ test.questions.count }} вопросов</span>
+                        </div>
+                        <div class="progress">
+                            <div class="progress-bar progress-bar-striped" role="progressbar" 
+                                 style="width: 0%" aria-valuenow="0" aria-valuemin="0" 
+                                 aria-valuemax="100" id="progressBar">
+                            </div>
+                        </div>
+                    </div>
+
+                    <form method="post" id="testForm">
+                        {% csrf_token %}
+                        {% for question in test.questions.all %}
+                            <div class="card mb-4">
+                                <div class="card-body">
+                                    <h5 class="card-title">
+                                        Вопрос {{ forloop.counter }} ({{ question.points }} баллов)
+                                    </h5>
+                                    <p class="card-text">{{ question.text }}</p>
+                                    
+                                    {% for answer in question.answers.all %}
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input" type="radio" 
+                                                   name="question_{{ question.id }}" 
+                                                   value="{{ answer.id }}" 
+                                                   id="answer_{{ answer.id }}" required>
+                                            <label class="form-check-label" for="answer_{{ answer.id }}">
+                                                {{ answer.text }}
+                                            </label>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        {% endfor %}
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-check me-2"></i>Завершить тест
+                            </button>
+                            <a href="{% url 'vacancy_list' %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Вернуться к вакансиям
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Timer functionality
+let timeLimit = {{ test.time_limit }} * 60; // Convert to seconds
+let totalQuestions = {{ test.questions.count }};
+let answeredQuestions = 0;
+
+function updateTimer() {
+    timeLimit--;
+    
+    if (timeLimit <= 0) {
+        alert('Время истекло! Тест будет автоматически отправлен.');
+        document.getElementById('testForm').submit();
+        return;
+    }
+    
+    let minutes = Math.floor(timeLimit / 60);
+    let seconds = timeLimit % 60;
+    
+    // Format time display
+    let timeDisplay = minutes + ':' + (seconds < 10 ? '0' : '') + seconds;
+    document.getElementById('timeDisplay').textContent = timeDisplay;
+    
+    // Change color when time is running out
+    let timerElement = document.getElementById('timer');
+    if (timeLimit <= 300) { // 5 minutes left
+        timerElement.className = 'h4 mb-0 text-danger';
+    } else if (timeLimit <= 600) { // 10 minutes left
+        timerElement.className = 'h4 mb-0 text-warning';
+    }
+}
+
+function updateProgress() {
+    answeredQuestions = 0;
+    // Count answered questions
+    for (let i = 1; i <= totalQuestions; i++) {
+        let questionInputs = document.querySelectorAll(`input[name^="question_"]`);
+        for (let input of questionInputs) {
+            if (input.checked) {
+                answeredQuestions++;
+                break;
+            }
+        }
+    }
+    
+    // Count actually answered questions by checking each question group
+    answeredQuestions = 0;
+    let questionGroups = new Set();
+    document.querySelectorAll('input[type="radio"]:checked').forEach(function(input) {
+        questionGroups.add(input.name);
+    });
+    answeredQuestions = questionGroups.size;
+    
+    let progressPercent = (answeredQuestions / totalQuestions) * 100;
+    
+    // Update progress bar
+    let progressBar = document.getElementById('progressBar');
+    progressBar.style.width = progressPercent + '%';
+    progressBar.setAttribute('aria-valuenow', progressPercent);
+    
+    // Update progress text
+    document.getElementById('progressText').textContent = 
+        answeredQuestions + ' из ' + totalQuestions + ' вопросов';
+    
+    // Change progress bar color based on completion
+    progressBar.className = 'progress-bar progress-bar-striped';
+    if (progressPercent === 100) {
+        progressBar.classList.add('bg-success');
+    } else if (progressPercent >= 50) {
+        progressBar.classList.add('bg-info');
+    } else {
+        progressBar.classList.add('bg-warning');
+    }
+}
+
+// Update timer every second
+setInterval(updateTimer, 1000);
+
+// Add event listeners to all radio buttons to track progress
+document.addEventListener('DOMContentLoaded', function() {
+    let radioButtons = document.querySelectorAll('input[type="radio"]');
+    radioButtons.forEach(function(radio) {
+        radio.addEventListener('change', updateProgress);
+    });
+    
+    // Initial progress update
+    updateProgress();
+    
+    // Confirm before leaving page
+    window.addEventListener('beforeunload', function(e) {
+        if (answeredQuestions > 0) {
+            e.preventDefault();
+            e.returnValue = '';
+        }
+    });
+    
+    // Form submission warning
+    document.getElementById('testForm').addEventListener('submit', function(e) {
+        if (answeredQuestions < totalQuestions) {
+            if (!confirm('Вы ответили не на все вопросы. Вы уверены, что хотите завершить тест?')) {
+                e.preventDefault();
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

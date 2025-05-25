@@ -1,4 +1,3 @@
-
 {% extends 'base.html' %}
 
 {% block title %}Быстрые отклики - PizzaJobs{% endblock %}
@@ -40,21 +39,53 @@
                                     </td>
                                     <td>{{ app.created_at|date:"d.m.Y H:i" }}</td>
                                     <td>
-                                        {% if not app.user_exists %}
-                                        <form method="post" action="{% url 'update_quick_application_status' app.id %}" class="d-inline">
-                                            {% csrf_token %}
-                                            <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
-                                                {% for status, label in application_statuses %}
-                                                    <option value="{{ status }}" {% if app.status == status %}selected{% endif %}>
-                                                        {{ label }}
-                                                    </option>
-                                                {% endfor %}
-                                            </select>
-                                        </form>
+                            {% if not app.user_created %}
+                                <form method="post" action="{% url 'update_quick_application_status' app.id %}" class="d-inline">
+                                    {% csrf_token %}
+                                    <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
+                                        {% for choice in application_statuses %}
+                                            <option value="{{ choice.0 }}" {% if app.status == choice.0 %}selected{% endif %}>
+                                                {{ choice.1 }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </form>
+                            {% elif app.test_token and app.vacancy.position_type.test %}
+                                {% if app.user_created.test_attempts.filter|length > 0 %}
+                                    {% with last_attempt=app.user_created.test_attempts.last %}
+                                        {% if last_attempt.passed %}
+                                            <span class="badge bg-success">Тест пройден</span>
+                                            <form method="post" action="{% url 'update_quick_application_status' app.id %}" class="d-inline mt-1">
+                                                {% csrf_token %}
+                                                <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
+                                                    {% for choice in application_statuses %}
+                                                        <option value="{{ choice.0 }}" {% if app.status == choice.0 %}selected{% endif %}>
+                                                            {{ choice.1 }}
+                                                        </option>
+                                                    {% endfor %}
+                                                </select>
+                                            </form>
                                         {% else %}
-                                            <span class="badge bg-success">Создан аккаунт</span>
+                                            <span class="badge bg-danger">Тест не пройден</span>
                                         {% endif %}
-                                    </td>
+                                    {% endwith %}
+                                {% else %}
+                                    <span class="badge bg-warning">Ожидает прохождения теста</span>
+                                {% endif %}
+                            {% else %}
+                                <span class="badge bg-info">Аккаунт создан</span>
+                                <form method="post" action="{% url 'update_quick_application_status' app.id %}" class="d-inline mt-1">
+                                    {% csrf_token %}
+                                    <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
+                                        {% for choice in application_statuses %}
+                                            <option value="{{ choice.0 }}" {% if app.status == choice.0 %}selected{% endif %}>
+                                                {{ choice.1 }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </form>
+                            {% endif %}
+                        </td>
                                     <td>
                                         {% if user.profile.role == 'HR_MANAGER' and not app.user_exists %}
                                         <form method="post" action="{% url 'convert_quick_application' app.id %}" class="d-inline">

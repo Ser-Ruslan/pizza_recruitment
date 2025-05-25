@@ -14,6 +14,13 @@
                 <div class="card-body">
                     <h3 class="h5 mb-3">{{ vacancy.title }}</h3>
                     
+                    {% if vacancy.position_type.test and vacancy.position_type.test.is_active %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Внимание!</strong> После заполнения формы вам необходимо будет пройти тест "{{ vacancy.position_type.test.title }}" для завершения отклика.
+                        </div>
+                    {% endif %}
+                    
                     <form method="post" enctype="multipart/form-data">
                         {% csrf_token %}
                         

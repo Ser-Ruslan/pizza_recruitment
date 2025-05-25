@@ -3,7 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth import login, authenticate, logout
 from django.contrib import messages
 from django.views.decorators.http import require_http_methods
-from django.db.models import Count, Q, F, Case, When, Value, FloatField
+from django.db.models import Count, Q, F, Case, When, Value, FloatField, Avg
 from django.db.models.functions import Round
 from .models import QuickApplication, Vacancy, ApplicationStatus
 from django.http import HttpResponseForbidden, JsonResponse
@@ -289,19 +289,6 @@ def apply_for_vacancy(request, vacancy_id):
     if Application.objects.filter(vacancy=vacancy, user=request.user).exists():
         messages.warning(request, 'Вы уже подали заявку на эту должность.')
         return redirect('vacancy_detail', vacancy_id=vacancy_id)
-        
-    # Check if user has passed the test for this position
-    position_test = vacancy.position_type.test
-    if position_test and position_test.is_active:
-        test_passed = TestAttempt.objects.filter(
-            test=position_test,
-            user=request.user,
-            passed=True
-        ).exists()
-        
-        if not test_passed:
-            messages.warning(request, 'Сначала необходимо пройти тест для этой позиции.')
-            return redirect('take_test', test_id=position_test.id)
 
     # Get user's active resumes
     resumes = Resume.objects.filter(user=request.user, is_active=True)
@@ -312,6 +299,26 @@ def apply_for_vacancy(request, vacancy_id):
     if request.method == 'POST':
         form = ApplicationForm(request.POST, user=request.user)
         if form.is_valid():
+            # Check if test is required for this position
+            position_test = vacancy.position_type.test
+            if position_test and position_test.is_active:
+                test_passed = TestAttempt.objects.filter(
+                    test=position_test,
+                    user=request.user,
+                    passed=True
+                ).exists()
+                
+                if not test_passed:
+                    # Store application data in session and redirect to test
+                    request.session['application_data'] = {
+                        'vacancy_id': vacancy.id,
+                        'resume_id': form.cleaned_data['resume'].id,
+                        'cover_letter': form.cleaned_data['cover_letter']
+                    }
+                    messages.info(request, 'Данные сохранены. Теперь необходимо пройти тест для этой позиции.')
+                    return redirect('take_test', test_id=position_test.id)
+            
+            # No test required or test already passed - create application
             application = form.save(commit=False)
             application.vacancy = vacancy
             application.user = request.user
@@ -766,7 +773,25 @@ def quick_apply(request, vacancy_id):
                         message=f"Получен быстрый отклик от {quick_app.full_name} на вакансию {vacancy.title}."
                     )
 
-            messages.success(request, 'Ваш отклик успешно отправлен.')
+            # Send welcome email to candidate
+            send_mail(
+                'Добро пожаловать в PizzaJobs - Ваш отклик отправлен!',
+                f'''Здравствуйте, {quick_app.full_name}!
+
+Добро пожаловать в PizzaJobs! 
+
+Ваш быстрый отклик на вакансию "{vacancy.title}" успешно отправлен и ожидает рассмотрения HR-менеджера.
+
+Мы свяжемся с вами в ближайшее время для дальнейших шагов.
+
+С уважением,
+Команда PizzaJobs''',
+                settings.EMAIL_HOST_USER,
+                [quick_app.email],
+                fail_silently=False,
+            )
+
+            messages.success(request, 'Ваш быстрый отклик успешно отправлен. HR-менеджер рассмотрит вашу заявку.')
             return redirect('vacancy_detail', vacancy_id=vacancy_id)
     else:
         form = QuickApplicationForm()
@@ -839,10 +864,84 @@ def convert_quick_application(request, app_id):
             messages.error(request, "Пользователь с таким email уже существует.")
             return redirect('quick_applications')
 
+        # Create user account
+        username = quick_app.email.split('@')[0]
+        if User.objects.filter(username=username).exists():
+            username = f"{username}_{random.randint(1000, 9999)}"
+        
+        password = ''.join(random.choices(string.ascii_letters + string.digits, k=12))
+        
+        user = User.objects.create_user(
+            username=username,
+            email=quick_app.email,
+            password=password,
+            first_name=quick_app.full_name.split()[0] if quick_app.full_name.split() else quick_app.full_name,
+            last_name=' '.join(quick_app.full_name.split()[1:]) if len(quick_app.full_name.split()) > 1 else ''
+        )
+
+        # Create user profile
+        UserProfile.objects.create(
+            user=user,
+            role=UserRole.CANDIDATE,
+            phone=quick_app.phone
+        )
+
+        # Generate test token if test is required
+        position_test = quick_app.vacancy.position_type.test
+        if position_test and position_test.is_active:
+            test_token = ''.join(random.choices(string.ascii_letters + string.digits, k=32))
+            quick_app.test_token = test_token
+        
         quick_app.status = ApplicationStatus.REVIEWING
+        quick_app.user_created = user
         quick_app.save()
 
-        messages.success(request, 'Быстрая заявка успешно взята в работу.')
+        # Send email with credentials and test link
+        if position_test and position_test.is_active:
+            test_link = request.build_absolute_uri(reverse('take_test_by_token', args=[test_token]))
+            send_mail(
+                'Ваша заявка рассмотрена - Создан аккаунт PizzaJobs',
+                f'''Здравствуйте, {quick_app.full_name}!
+
+Ваша быстрая заявка на вакансию "{quick_app.vacancy.title}" была рассмотрена HR-менеджером.
+
+Для вас создан аккаунт на сайте PizzaJobs:
+Логин: {username}
+Пароль: {password}
+
+Для продолжения процесса отбора вам необходимо пройти тест.
+Ссылка для прохождения теста: {test_link}
+
+После успешного прохождения теста ваша заявка будет направлена на дальнейшее рассмотрение.
+
+С уважением,
+Команда PizzaJobs''',
+                settings.EMAIL_HOST_USER,
+                [quick_app.email],
+                fail_silently=False,
+            )
+        else:
+            send_mail(
+                'Ваша заявка рассмотрена - Создан аккаунт PizzaJobs',
+                f'''Здравствуйте, {quick_app.full_name}!
+
+Ваша быстрая заявка на вакансию "{quick_app.vacancy.title}" была рассмотрена HR-менеджером.
+
+Для вас создан аккаунт на сайте PizzaJobs:
+Логин: {username}
+Пароль: {password}
+
+Теперь вы можете войти в систему и отслеживать статус своей заявки.
+
+С уважением,
+Команда PizzaJobs''',
+                settings.EMAIL_HOST_USER,
+                [quick_app.email],
+                fail_silently=False,
+            )
+
+        messages.success(request, f'Аккаунт создан для {quick_app.full_name}. Данные: Логин: {username}, Пароль: {password}. Email отправлен.')
+        
         return redirect('quick_applications')
 
     return HttpResponseNotAllowed(['POST'])
@@ -882,18 +981,56 @@ def create_test(request, position_type_id):
                 )
 
         messages.success(request, 'Тест успешно создан')
-        return redirect('vacancy_detail', vacancy_id=vacancy_id)
+        return redirect('manage_tests')
 
-    return render(request, 'hr/create_test.html', {'vacancy': vacancy})
+    return render(request, 'hr/create_test.html', {'position_type': position_type})
 
-@login_required
 def take_test(request, test_id):
     test = get_object_or_404(Test, id=test_id)
+
+    # For non-authenticated users (quick apply), redirect to login/register
+    if not request.user.is_authenticated:
+        request.session['test_id'] = test_id
+        messages.warning(request, 'Для прохождения теста необходимо зарегистрироваться.')
+        return redirect('register')
 
     # Check if user already passed the test
     if TestAttempt.objects.filter(test=test, user=request.user, passed=True).exists():
         messages.warning(request, 'Вы уже успешно прошли этот тест')
-        return redirect('vacancy_detail', vacancy_id=test.vacancy.id)
+        # Handle session data for redirects
+        quick_app_id = request.session.get('quick_app_id')
+        application_data = request.session.get('application_data')
+        
+        if quick_app_id:
+            del request.session['quick_app_id']
+            quick_app = QuickApplication.objects.get(id=quick_app_id)
+            # Send quick application
+            for restaurant in quick_app.vacancy.restaurants.all():
+                if restaurant.manager:
+                    Notification.objects.create(
+                        user=restaurant.manager,
+                        title=f"Быстрый отклик на {quick_app.vacancy.title}",
+                        message=f"Получен быстрый отклик от {quick_app.full_name} на вакансию {quick_app.vacancy.title}."
+                    )
+            messages.success(request, 'Ваш быстрый отклик успешно отправлен.')
+            return redirect('vacancy_detail', vacancy_id=quick_app.vacancy.id)
+        elif application_data:
+            del request.session['application_data']
+            # Create regular application
+            application = Application.objects.create(
+                vacancy_id=application_data['vacancy_id'],
+                user=request.user,
+                resume_id=application_data['resume_id'],
+                cover_letter=application_data['cover_letter']
+            )
+            messages.success(request, 'Тест пройден. Ваша заявка успешно отправлена.')
+            return redirect('vacancy_detail', vacancy_id=application.vacancy.id)
+        else:
+            vacancy = Vacancy.objects.filter(position_type=test.position_type, is_active=True).first()
+            if vacancy:
+                return redirect('vacancy_detail', vacancy_id=vacancy.id)
+            else:
+                return redirect('vacancy_list')
 
     if request.method == 'POST':
         attempt = TestAttempt.objects.create(
@@ -922,24 +1059,85 @@ def take_test(request, test_id):
         attempt.save()
 
         if attempt.passed:
-            messages.success(request, 'Поздравляем! Вы успешно прошли тест')
-            return redirect('apply_for_vacancy', vacancy_id=test.vacancy.id)
+            # Check what type of application this is for
+            quick_app_id = request.session.get('quick_app_id')
+            application_data = request.session.get('application_data')
+            
+            if quick_app_id:
+                # Quick application process
+                del request.session['quick_app_id']
+                quick_app = QuickApplication.objects.get(id=quick_app_id)
+                
+                # Send quick application
+                for restaurant in quick_app.vacancy.restaurants.all():
+                    if restaurant.manager:
+                        Notification.objects.create(
+                            user=restaurant.manager,
+                            title=f"Быстрый отклик на {quick_app.vacancy.title}",
+                            message=f"Получен быстрый отклик от {quick_app.full_name} на вакансию {quick_app.vacancy.title}."
+                        )
+                
+                messages.success(request, f'Поздравляем! Вы успешно прошли тест с результатом {attempt.score:.1f}%. Ваш быстрый отклик отправлен.')
+                return redirect('vacancy_detail', vacancy_id=quick_app.vacancy.id)
+                
+            elif application_data:
+                # Regular application process
+                del request.session['application_data']
+                
+                # Create the application
+                application = Application.objects.create(
+                    vacancy_id=application_data['vacancy_id'],
+                    user=request.user,
+                    resume_id=application_data['resume_id'],
+                    cover_letter=application_data['cover_letter']
+                )
+                
+                messages.success(request, f'Поздравляем! Вы успешно прошли тест с результатом {attempt.score:.1f}%. Ваша заявка отправлена.')
+                return redirect('vacancy_detail', vacancy_id=application.vacancy.id)
+                
+            else:
+                # Direct test taking
+                messages.success(request, f'Поздравляем! Вы успешно прошли тест с результатом {attempt.score:.1f}%')
+                vacancy = Vacancy.objects.filter(position_type=test.position_type, is_active=True).first()
+                if vacancy:
+                    messages.info(request, 'Теперь вы можете подать заявку на вакансию')
+                    return redirect('apply_for_vacancy', vacancy_id=vacancy.id)
+                else:
+                    return redirect('vacancy_list')
         else:
-            messages.error(request, 'К сожалению, вы не прошли тест')
-            return redirect('vacancy_detail', vacancy_id=test.vacancy.id)
+            # Test failed
+            quick_app_id = request.session.get('quick_app_id')
+            application_data = request.session.get('application_data')
+            
+            if quick_app_id:
+                del request.session['quick_app_id']
+                quick_app = QuickApplication.objects.get(id=quick_app_id)
+                messages.error(request, f'К сожалению, вы не прошли тест. Ваш результат: {attempt.score:.1f}%. Минимальный проходной балл: {test.passing_score}%')
+                return redirect('vacancy_detail', vacancy_id=quick_app.vacancy.id)
+            elif application_data:
+                del request.session['application_data']
+                messages.error(request, f'К сожалению, вы не прошли тест. Ваш результат: {attempt.score:.1f}%. Минимальный проходной балл: {test.passing_score}%')
+                return redirect('vacancy_detail', vacancy_id=application_data['vacancy_id'])
+            else:
+                messages.error(request, f'К сожалению, вы не прошли тест. Ваш результат: {attempt.score:.1f}%. Минимальный проходной балл: {test.passing_score}%')
+                vacancy = Vacancy.objects.filter(position_type=test.position_type, is_active=True).first()
+                if vacancy:
+                    return redirect('vacancy_detail', vacancy_id=vacancy.id)
+                else:
+                    return redirect('vacancy_list')
 
     return render(request, 'vacancies/take_test.html', {'test': test})
 
 @login_required
 @hr_required
-def toggle_test(request, vacancy_id):
-    vacancy = get_object_or_404(Vacancy, id=vacancy_id)
-    if vacancy.test:
-        vacancy.test.is_active = not vacancy.test.is_active
-        vacancy.test.save()
-        status = "активирован" if vacancy.test.is_active else "деактивирован"
+def toggle_test(request, test_id):
+    if request.method == 'POST':
+        test = get_object_or_404(Test, id=test_id)
+        test.is_active = not test.is_active
+        test.save()
+        status = "активирован" if test.is_active else "деактивирован"
         messages.success(request, f'Тест успешно {status}.')
-    return redirect('vacancy_detail', vacancy_id=vacancy_id)
+    return redirect('manage_tests')
 
 @login_required
 @hr_required
@@ -1045,14 +1243,114 @@ def edit_test(request, test_id):
     return render(request, 'hr/edit_test.html', {'test': test})
 
 @login_required
-@login_required
 @hr_required
 def delete_test(request, test_id):
-    test = get_object_or_404(Test, id=test_id)
-    position_type = test.position_type
-    test.delete()
-    messages.success(request, 'Тест успешно удален')
+    if request.method == 'POST':
+        test = get_object_or_404(Test, id=test_id)
+        test.delete()
+        messages.success(request, 'Тест успешно удален')
     return redirect('manage_tests')
+
+def take_test_by_token(request, token):
+    quick_app = get_object_or_404(QuickApplication, test_token=token)
+    test = quick_app.vacancy.position_type.test
+    
+    if not test or not test.is_active:
+        messages.error(request, 'Тест для данной позиции не найден или неактивен.')
+        return redirect('home')
+    
+    # Check if user is authenticated and it's the right user
+    if not request.user.is_authenticated:
+        messages.warning(request, 'Для прохождения теста необходимо войти в систему.')
+        return redirect('login')
+    
+    if request.user != quick_app.user_created:
+        messages.error(request, 'У вас нет доступа к данному тесту.')
+        return redirect('home')
+
+    # Check if user already passed the test
+    if TestAttempt.objects.filter(test=test, user=request.user, passed=True).exists():
+        messages.warning(request, 'Вы уже успешно прошли этот тест')
+        quick_app.status = ApplicationStatus.ACCEPTED
+        quick_app.save()
+        messages.success(request, 'Ваша быстрая заявка была одобрена.')
+        return redirect('home')
+
+    if request.method == 'POST':
+        attempt = TestAttempt.objects.create(
+            test=test,
+            user=request.user
+        )
+
+        score = 0
+        total_points = sum(q.points for q in test.questions.all())
+
+        for question in test.questions.all():
+            answer_id = request.POST.get(f'question_{question.id}')
+            if answer_id:
+                selected_answer = Answer.objects.get(id=answer_id)
+                UserAnswer.objects.create(
+                    attempt=attempt,
+                    question=question,
+                    selected_answer=selected_answer
+                )
+                if selected_answer.is_correct:
+                    score += question.points
+
+        attempt.score = (score / total_points) * 100
+        attempt.passed = attempt.score >= test.passing_score
+        attempt.end_time = timezone.now()
+        attempt.save()
+
+        if attempt.passed:
+            # Update quick application status
+            quick_app.status = ApplicationStatus.ACCEPTED
+            quick_app.save()
+            
+            # Create regular application
+            regular_app = Application.objects.create(
+                vacancy=quick_app.vacancy,
+                user=request.user,
+                cover_letter=quick_app.cover_letter,
+                status=ApplicationStatus.NEW
+            )
+            
+            # Calculate time spent on test
+            time_spent = attempt.end_time - attempt.start_time
+            minutes_spent = int(time_spent.total_seconds() // 60)
+            seconds_spent = int(time_spent.total_seconds() % 60)
+            time_str = f"{minutes_spent} мин {seconds_spent} сек"
+            
+            # Notify HR managers about test completion and application conversion
+            hr_users = User.objects.filter(profile__role=UserRole.HR_MANAGER)
+            for hr in hr_users:
+                send_mail(
+                    f'Быстрая заявка преобразована в обычную - Тест пройден',
+                    f'''Быстрая заявка от {quick_app.full_name} на вакансию "{quick_app.vacancy.title}" была преобразована в обычную заявку.
+
+Кандидат успешно прошел тест:
+- Результат: {attempt.score:.1f}% (требовалось: {test.passing_score}%)
+- Время прохождения: {time_str}
+- Дата прохождения: {attempt.end_time.strftime('%d.%m.%Y в %H:%M')}
+
+Заявка готова к дальнейшему рассмотрению.
+
+С уважением,
+Система PizzaJobs''',
+                    settings.EMAIL_HOST_USER,
+                    [hr.email],
+                    fail_silently=False,
+                )
+            
+            messages.success(request, f'Поздравляем! Вы успешно прошли тест с результатом {attempt.score:.1f}%. Ваша заявка принята и направлена на рассмотрение.')
+            return redirect('home')
+        else:
+            quick_app.status = ApplicationStatus.REJECTED
+            quick_app.save()
+            messages.error(request, f'К сожалению, вы не прошли тест. Ваш результат: {attempt.score:.1f}%. Минимальный проходной балл: {test.passing_score}%')
+            return redirect('home')
+
+    return render(request, 'vacancies/take_test.html', {'test': test, 'is_quick_app': True})
 
 def test_statistics(request):
     tests = Test.objects.all()
