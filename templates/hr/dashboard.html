@@ -186,6 +186,38 @@
         </div>
     </div>
 
+    <!-- Статистика тестирования -->
+    <div class="card shadow mb-4">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <h3 class="card-title h5 mb-0">Статистика тестирования</h3>
+            <a href="{% url 'test_statistics' %}" class="btn btn-sm btn-outline-primary">
+                <i class="fas fa-history me-2"></i>История тестирования
+            </a>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="border rounded p-3 text-center">
+                        <h4>{{ statistics.total_attempts }}</h4>
+                        <p class="mb-0">Всего попыток</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="border rounded p-3 text-center">
+                        <h4>{{ statistics.passed_attempts }}</h4>
+                        <p class="mb-0">Успешных попыток</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="border rounded p-3 text-center">
+                        <h4>{{ statistics.success_rate }}%</h4>
+                        <p class="mb-0">Процент успешности</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Предстоящие собеседования -->
     <div class="card shadow mb-4">
         <div class="card-header bg-white">

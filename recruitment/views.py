@@ -21,11 +21,13 @@ from django.conf import settings
 from django.db import transaction
 import string
 import random
+import json  # Import json
 
 from .models import (
     User, UserProfile, Resume, Restaurant, PositionType, 
     Vacancy, Application, Interview, ApplicationComment, 
-    Notification, UserRole, ApplicationStatus
+    Notification, UserRole, ApplicationStatus, Test,
+    TestAttempt, Question, Answer, UserAnswer
 )
 from .forms import (
     UserRegisterForm, UserProfileForm, ResumeUploadForm, 
@@ -287,6 +289,19 @@ def apply_for_vacancy(request, vacancy_id):
     if Application.objects.filter(vacancy=vacancy, user=request.user).exists():
         messages.warning(request, 'Вы уже подали заявку на эту должность.')
         return redirect('vacancy_detail', vacancy_id=vacancy_id)
+        
+    # Check if user has passed the test for this position
+    position_test = vacancy.position_type.test
+    if position_test and position_test.is_active:
+        test_passed = TestAttempt.objects.filter(
+            test=position_test,
+            user=request.user,
+            passed=True
+        ).exists()
+        
+        if not test_passed:
+            messages.warning(request, 'Сначала необходимо пройти тест для этой позиции.')
+            return redirect('take_test', test_id=position_test.id)
 
     # Get user's active resumes
     resumes = Resume.objects.filter(user=request.user, is_active=True)
@@ -374,7 +389,7 @@ def application_list(request):
 
     # Check if there are new quick applications
     has_new_quick_applications = QuickApplication.objects.filter(status=ApplicationStatus.NEW).exists()
-    
+
     context = {
         'page_obj': page_obj,
         'statuses': ApplicationStatus.choices,
@@ -390,12 +405,12 @@ def application_list(request):
 @require_http_methods(["POST"])
 def delete_comment(request, comment_id):
     comment = get_object_or_404(ApplicationComment, id=comment_id)
-    
+
     # Check permissions
     if not (request.user == comment.author or 
             request.user.profile.role in [UserRole.HR_MANAGER, UserRole.RESTAURANT_MANAGER]):
         return HttpResponseForbidden("У вас нет прав для удаления этого комментария.")
-    
+
     application_id = comment.application.id
     comment.delete()
     messages.success(request, "Комментарий удален.")
@@ -406,10 +421,10 @@ def delete_comment(request, comment_id):
 def moderate_comment(request, comment_id):
     if not request.user.profile.role in [UserRole.HR_MANAGER, UserRole.RESTAURANT_MANAGER]:
         return HttpResponseForbidden("У вас нет прав для модерации комментариев.")
-    
+
     comment = get_object_or_404(ApplicationComment, id=comment_id)
     action = request.POST.get('action')
-    
+
     if action == 'approve':
         comment.is_approved = True
         comment.needs_moderation = False
@@ -417,7 +432,7 @@ def moderate_comment(request, comment_id):
     elif action == 'reject':
         comment.delete()
         messages.success(request, "Комментарий отклонен.")
-    
+
     comment.save()
     return redirect('application_detail', application_id=comment.application.id)
 
@@ -791,18 +806,18 @@ def quick_applications(request):
 @require_http_methods(["POST"])
 def update_quick_application_status(request, app_id):
     quick_app = get_object_or_404(QuickApplication, id=app_id)
-    
+
     # Check if user already exists
     if User.objects.filter(email=quick_app.email).exists():
         messages.error(request, "Невозможно изменить статус, так как для этой заявки уже создан аккаунт.")
         return redirect('quick_applications')
-    
+
     new_status = request.POST.get('status')
     if new_status in dict(ApplicationStatus.choices):
         quick_app.status = new_status
         quick_app.save()
         messages.success(request, "Статус быстрой заявки обновлен.")
-    
+
     return redirect('quick_applications')
 
 @login_required
@@ -818,15 +833,15 @@ def delete_quick_application(request, app_id):
 def convert_quick_application(request, app_id):
     if request.method == 'POST':
         quick_app = get_object_or_404(QuickApplication, id=app_id, status=ApplicationStatus.NEW)
-        
+
         # Check if user already exists
         if User.objects.filter(email=quick_app.email).exists():
             messages.error(request, "Пользователь с таким email уже существует.")
             return redirect('quick_applications')
-            
+
         quick_app.status = ApplicationStatus.REVIEWING
         quick_app.save()
-        
+
         messages.success(request, 'Быстрая заявка успешно взята в работу.')
         return redirect('quick_applications')
 
@@ -838,3 +853,222 @@ def logout_view(request):
         messages.success(request, 'Вы успешно вышли из системы')
         return redirect('home')
     return render(request, 'registration/logout.html')
+@login_required
+@hr_required
+def create_test(request, position_type_id):
+    position_type = get_object_or_404(PositionType, id=position_type_id)
+
+    if request.method == 'POST':
+        test = Test.objects.create(
+            position_type=position_type,
+            title=request.POST['title'],
+            description=request.POST['description'],
+            time_limit=request.POST['time_limit'],
+            passing_score=request.POST['passing_score']
+        )
+
+        questions_data = json.loads(request.POST['questions'])
+        for q_data in questions_data:
+            question = Question.objects.create(
+                test=test,
+                text=q_data['text'],
+                points=q_data['points']
+            )
+            for a_data in q_data['answers']:
+                Answer.objects.create(
+                    question=question,
+                    text=a_data['text'],
+                    is_correct=a_data['is_correct']
+                )
+
+        messages.success(request, 'Тест успешно создан')
+        return redirect('vacancy_detail', vacancy_id=vacancy_id)
+
+    return render(request, 'hr/create_test.html', {'vacancy': vacancy})
+
+@login_required
+def take_test(request, test_id):
+    test = get_object_or_404(Test, id=test_id)
+
+    # Check if user already passed the test
+    if TestAttempt.objects.filter(test=test, user=request.user, passed=True).exists():
+        messages.warning(request, 'Вы уже успешно прошли этот тест')
+        return redirect('vacancy_detail', vacancy_id=test.vacancy.id)
+
+    if request.method == 'POST':
+        attempt = TestAttempt.objects.create(
+            test=test,
+            user=request.user
+        )
+
+        score = 0
+        total_points = sum(q.points for q in test.questions.all())
+
+        for question in test.questions.all():
+            answer_id = request.POST.get(f'question_{question.id}')
+            if answer_id:
+                selected_answer = Answer.objects.get(id=answer_id)
+                UserAnswer.objects.create(
+                    attempt=attempt,
+                    question=question,
+                    selected_answer=selected_answer
+                )
+                if selected_answer.is_correct:
+                    score += question.points
+
+        attempt.score = (score / total_points) * 100
+        attempt.passed = attempt.score >= test.passing_score
+        attempt.end_time = timezone.now()
+        attempt.save()
+
+        if attempt.passed:
+            messages.success(request, 'Поздравляем! Вы успешно прошли тест')
+            return redirect('apply_for_vacancy', vacancy_id=test.vacancy.id)
+        else:
+            messages.error(request, 'К сожалению, вы не прошли тест')
+            return redirect('vacancy_detail', vacancy_id=test.vacancy.id)
+
+    return render(request, 'vacancies/take_test.html', {'test': test})
+
+@login_required
+@hr_required
+def toggle_test(request, vacancy_id):
+    vacancy = get_object_or_404(Vacancy, id=vacancy_id)
+    if vacancy.test:
+        vacancy.test.is_active = not vacancy.test.is_active
+        vacancy.test.save()
+        status = "активирован" if vacancy.test.is_active else "деактивирован"
+        messages.success(request, f'Тест успешно {status}.')
+    return redirect('vacancy_detail', vacancy_id=vacancy_id)
+
+@login_required
+@hr_required
+def manage_tests(request):
+    position_types = PositionType.objects.all().prefetch_related('test', 'vacancies')
+    return render(request, 'hr/all_tests.html', {'position_types': position_types})
+
+@login_required
+@hr_required
+def create_tests_for_all_vacancies(request):
+    vacancies = Vacancy.objects.filter(test__isnull=True)
+    
+    for vacancy in vacancies:
+        # Создаем базовый тест для каждой вакансии
+        test = Test.objects.create(
+            vacancy=vacancy,
+            title=f"Тест для вакансии {vacancy.title}",
+            description=f"Тестирование знаний и навыков для позиции {vacancy.title}",
+            time_limit=30,
+            passing_score=70
+        )
+        
+        # Создаем базовые вопросы для теста
+        questions = [
+            {
+                "text": f"Опишите ваш опыт работы, связанный с позицией {vacancy.title}",
+                "points": 30,
+                "answers": [
+                    {"text": "Имею более 3 лет опыта", "is_correct": True},
+                    {"text": "Имею 1-3 года опыта", "is_correct": True},
+                    {"text": "Имею менее 1 года опыта", "is_correct": False},
+                    {"text": "Не имею опыта", "is_correct": False}
+                ]
+            },
+            {
+                "text": "Готовы ли вы работать в команде?",
+                "points": 20,
+                "answers": [
+                    {"text": "Да, имею опыт командной работы", "is_correct": True},
+                    {"text": "Предпочитаю работать самостоятельно", "is_correct": False}
+                ]
+            },
+            {
+                "text": "Какой график работы вам подходит?",
+                "points": 20,
+                "answers": [
+                    {"text": "Готов(а) к сменному графику", "is_correct": True},
+                    {"text": "Только стандартный график", "is_correct": True},
+                    {"text": "Не готов(а) к регулярному графику", "is_correct": False}
+                ]
+            }
+        ]
+        
+        for q_data in questions:
+            question = Question.objects.create(
+                test=test,
+                text=q_data["text"],
+                points=q_data["points"]
+            )
+            for a_data in q_data["answers"]:
+                Answer.objects.create(
+                    question=question,
+                    text=a_data["text"],
+                    is_correct=a_data["is_correct"]
+                )
+    
+    messages.success(request, 'Тесты успешно созданы для всех вакансий без тестов')
+    return redirect('manage_tests')
+
+@login_required
+@hr_required
+def edit_test(request, test_id):
+    test = get_object_or_404(Test, id=test_id)
+    
+    if request.method == 'POST':
+        test.title = request.POST['title']
+        test.description = request.POST['description']
+        test.time_limit = request.POST['time_limit']
+        test.passing_score = request.POST['passing_score']
+        test.save()
+        
+        # Delete existing questions and answers
+        test.questions.all().delete()
+        
+        # Create new questions and answers
+        questions_data = json.loads(request.POST['questions'])
+        for q_data in questions_data:
+            question = Question.objects.create(
+                test=test,
+                text=q_data['text'],
+                points=q_data['points']
+            )
+            for a_data in q_data['answers']:
+                Answer.objects.create(
+                    question=question,
+                    text=a_data['text'],
+                    is_correct=a_data['is_correct']
+                )
+        
+        messages.success(request, 'Тест успешно обновлен')
+        return redirect('manage_tests')
+        
+    return render(request, 'hr/edit_test.html', {'test': test})
+
+@login_required
+@login_required
+@hr_required
+def delete_test(request, test_id):
+    test = get_object_or_404(Test, id=test_id)
+    position_type = test.position_type
+    test.delete()
+    messages.success(request, 'Тест успешно удален')
+    return redirect('manage_tests')
+
+def test_statistics(request):
+    tests = Test.objects.all()
+    statistics = {
+        'total_attempts': TestAttempt.objects.count(),
+        'passed_attempts': TestAttempt.objects.filter(passed=True).count(),
+        'tests_data': []
+    }
+
+    for test in tests:
+        test_attempts = test.attempts.all()
+        statistics['tests_data'].append({
+            'test': test,
+            'total_attempts': test_attempts.count(),
+            'passed_attempts': test_attempts.filter(passed=True).count(),
+            'avg_score': test_attempts.aggregate(Avg('score'))['score__avg'] or 0
+        })
+
+    return render(request, 'hr/test_statistics.html', {'statistics': statistics})

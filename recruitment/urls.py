@@ -60,4 +60,11 @@ path('vacancies/<int:vacancy_id>/quick-apply/', views.quick_apply, name='quick_a
     path('hr/quick-applications/<int:app_id>/convert/', views.convert_quick_application, name='convert_quick_application'),
     path('hr/quick-applications/<int:app_id>/update-status/', views.update_quick_application_status, name='update_quick_application_status'),
     path('hr/quick-applications/<int:app_id>/delete/', views.delete_quick_application, name='delete_quick_application'),
+    path('hr/test-statistics/', views.test_statistics, name='test_statistics'),
+    path('hr/tests/', views.manage_tests, name='manage_tests'),
+    path('hr/tests/create-all/', views.create_tests_for_all_vacancies, name='create_tests_for_all_vacancies'),
+    path('hr/tests/<int:test_id>/edit/', views.edit_test, name='edit_test'),
+    path('hr/position-types/<int:position_type_id>/create-test/', views.create_test, name='create_test'),
+    path('hr/tests/<int:test_id>/delete/', views.delete_test, name='delete_test'),
+    path('hr/tests/<int:test_id>/toggle/', views.toggle_test, name='toggle_test'),
 ]

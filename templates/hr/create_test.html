@@ -1,0 +1,122 @@
+
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Создать тест для вакансии "{{ vacancy.title }}"</h2>
+    
+    <form id="testForm" method="POST">
+        {% csrf_token %}
+        <div class="mb-3">
+            <label class="form-label">Название теста</label>
+            <input type="text" name="title" class="form-control" required>
+        </div>
+        
+        <div class="mb-3">
+            <label class="form-label">Описание теста</label>
+            <textarea name="description" class="form-control" rows="3" required></textarea>
+        </div>
+        
+        <div class="mb-3">
+            <label class="form-label">Ограничение по времени (в минутах)</label>
+            <input type="number" name="time_limit" class="form-control" required>
+        </div>
+        
+        <div class="mb-3">
+            <label class="form-label">Проходной балл (%)</label>
+            <input type="number" name="passing_score" class="form-control" required min="0" max="100" value="70">
+        </div>
+
+        <div id="questions">
+            <!-- Questions will be added here dynamically -->
+        </div>
+
+        <button type="button" class="btn btn-secondary mb-3" onclick="addQuestion()">
+            <i class="fas fa-plus"></i> Добавить вопрос
+        </button>
+
+        <div class="d-flex justify-content-between">
+            <a href="{% url 'vacancy_detail' vacancy.id %}" class="btn btn-secondary">Отмена</a>
+            <button type="submit" class="btn btn-primary">Создать тест</button>
+        </div>
+    </form>
+</div>
+
+{% block extra_js %}
+<script>
+let questionCount = 0;
+
+function addQuestion() {
+    const questionsDiv = document.getElementById('questions');
+    const questionDiv = document.createElement('div');
+    questionDiv.className = 'card mb-3';
+    questionDiv.innerHTML = `
+        <div class="card-body">
+            <h5 class="card-title">Вопрос ${questionCount + 1}</h5>
+            <div class="mb-3">
+                <label class="form-label">Текст вопроса</label>
+                <input type="text" class="form-control" required name="questions[${questionCount}][text]">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Баллы за вопрос</label>
+                <input type="number" class="form-control" required name="questions[${questionCount}][points]" value="1">
+            </div>
+            <div class="answers">
+                <h6>Варианты ответов</h6>
+                <div class="mb-2">
+                    <input type="text" class="form-control mb-2" required placeholder="Вариант ответа" name="questions[${questionCount}][answers][0][text]">
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" required name="questions[${questionCount}][correct]" value="0">
+                        <label class="form-check-label">Правильный ответ</label>
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <input type="text" class="form-control mb-2" required placeholder="Вариант ответа" name="questions[${questionCount}][answers][1][text]">
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" required name="questions[${questionCount}][correct]" value="1">
+                        <label class="form-check-label">Правильный ответ</label>
+                    </div>
+                </div>
+            </div>
+            <button type="button" class="btn btn-danger btn-sm mt-2" onclick="this.parentElement.parentElement.remove()">
+                <i class="fas fa-trash"></i> Удалить вопрос
+            </button>
+        </div>
+    `;
+    questionsDiv.appendChild(questionDiv);
+    questionCount++;
+}
+
+document.getElementById('testForm').onsubmit = function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    const questions = [];
+    
+    for(let i = 0; i < questionCount; i++) {
+        const questionData = {
+            text: formData.get(`questions[${i}][text]`),
+            points: formData.get(`questions[${i}][points]`),
+            answers: [
+                {
+                    text: formData.get(`questions[${i}][answers][0][text]`),
+                    is_correct: formData.get(`questions[${i}][correct]`) === "0"
+                },
+                {
+                    text: formData.get(`questions[${i}][answers][1][text]`),
+                    is_correct: formData.get(`questions[${i}][correct]`) === "1"
+                }
+            ]
+        };
+        if(questionData.text) questions.push(questionData);
+    }
+    
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'questions';
+    input.value = JSON.stringify(questions);
+    this.appendChild(input);
+    this.submit();
+};
+</script>
+{% endblock %}
+{% endblock %}

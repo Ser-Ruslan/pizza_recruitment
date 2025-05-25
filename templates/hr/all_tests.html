@@ -1,0 +1,91 @@
+
+{% extends 'base.html' %}
+
+{% block title %}Управление тестами - PizzaJobs{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Управление тестами</h1>
+        <div>
+            <a href="{% url 'create_tests_for_all_vacancies' %}" class="btn btn-success">
+                <i class="fas fa-magic me-2"></i>Создать тесты для всех позиций
+            </a>
+            <a href="{% url 'hr_dashboard' %}" class="btn btn-outline-secondary ms-2">
+                <i class="fas fa-arrow-left me-2"></i>Назад
+            </a>
+        </div>
+    </div>
+
+    <div class="card shadow">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Позиция</th>
+                            <th>Название теста</th>
+                            <th>Статус</th>
+                            <th>Проходной балл</th>
+                            <th>Связанные вакансии</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for position_type in position_types %}
+                            <tr>
+                                <td>{{ position_type.title }}</td>
+                                <td>
+                                    {% if position_type.test %}
+                                        {{ position_type.test.title }}
+                                    {% else %}
+                                        <span class="text-muted">Нет теста</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if position_type.test %}
+                                        <span class="badge {% if position_type.test.is_active %}bg-success{% else %}bg-warning{% endif %}">
+                                            {{ position_type.test.is_active|yesno:"Активен,Неактивен" }}
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Отсутствует</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if position_type.test %}
+                                        {{ position_type.test.passing_score }}%
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {{ position_type.vacancies.count }} вакансий
+                                </td>
+                                <td>
+                                    {% if position_type.test %}
+                                        <div class="btn-group">
+                                            <a href="{% url 'edit_test' position_type.test.id %}" class="btn btn-sm btn-info">
+                                                <i class="fas fa-edit"></i> Редактировать
+                                            </a>
+                                            <form method="post" action="{% url 'toggle_test' position_type.test.id %}" class="d-inline">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-sm btn-{{ position_type.test.is_active|yesno:'warning,success' }}">
+                                                    {{ position_type.test.is_active|yesno:'Деактивировать,Активировать' }}
+                                                </button>
+                                            </form>
+                                        </div>
+                                    {% else %}
+                                        <a href="{% url 'create_test' position_type.id %}" class="btn btn-sm btn-primary">
+                                            <i class="fas fa-plus"></i> Создать тест
+                                        </a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

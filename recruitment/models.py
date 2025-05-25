@@ -177,6 +177,52 @@ class QuickApplication(models.Model):
         return f"Quick application from {self.full_name} for {self.vacancy.title}"
 
 # Notification Model
+class Test(models.Model):
+    position_type = models.OneToOneField(PositionType, on_delete=models.CASCADE, related_name='test')
+    title = models.CharField(max_length=200)
+    description = models.TextField()
+    time_limit = models.IntegerField(help_text="Time limit in minutes")
+    passing_score = models.IntegerField(default=70)
+    is_active = models.BooleanField(default=True)
+    
+    def __str__(self):
+        return f"Test for {self.position_type.title}"
+
+class Question(models.Model):
+    test = models.ForeignKey(Test, on_delete=models.CASCADE, related_name='questions')
+    text = models.TextField()
+    points = models.IntegerField(default=1)
+    
+    def __str__(self):
+        return f"Question for {self.test.title}"
+
+class Answer(models.Model):
+    question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='answers')
+    text = models.CharField(max_length=255)
+    is_correct = models.BooleanField(default=False)
+    
+    def __str__(self):
+        return self.text
+
+class TestAttempt(models.Model):
+    test = models.ForeignKey(Test, on_delete=models.CASCADE, related_name='attempts')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='test_attempts')
+    start_time = models.DateTimeField(auto_now_add=True)
+    end_time = models.DateTimeField(null=True, blank=True)
+    score = models.IntegerField(null=True, blank=True)
+    passed = models.BooleanField(default=False)
+    
+    def __str__(self):
+        return f"{self.user.username}'s attempt at {self.test.title}"
+
+class UserAnswer(models.Model):
+    attempt = models.ForeignKey(TestAttempt, on_delete=models.CASCADE, related_name='user_answers')
+    question = models.ForeignKey(Question, on_delete=models.CASCADE)
+    selected_answer = models.ForeignKey(Answer, on_delete=models.CASCADE)
+    
+    def __str__(self):
+        return f"{self.attempt.user.username}'s answer to {self.question}"
+
 class Notification(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
     title = models.CharField(max_length=100)
