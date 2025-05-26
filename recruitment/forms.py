@@ -309,10 +309,12 @@ class ApplicationCommentForm(forms.ModelForm):
 class InterviewForm(forms.ModelForm):
     class Meta:
         model = Interview
-        fields = ['interviewer', 'restaurant', 'date_time', 'location', 'is_online', 'meeting_link', 'notes', 'status']
+        fields = ['interviewer', 'restaurant', 'date_time', 'location', 'is_online', 'meeting_link', 'notes']
         widgets = {
-            'date_time': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
-            'notes': forms.Textarea(attrs={'rows': 3}),
+            'date_time': forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'form-control'}),
+            'notes': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
+            'location': forms.TextInput(attrs={'class': 'form-control'}),
+            'meeting_link': forms.URLInput(attrs={'class': 'form-control'}),
         }
         labels = {
             'interviewer': _('Интервьюер'),
@@ -328,6 +330,11 @@ class InterviewForm(forms.ModelForm):
         application = kwargs.pop('application', None)
         super().__init__(*args, **kwargs)
         
+        # Делаем обязательными основные поля
+        self.fields['restaurant'].required = True
+        self.fields['date_time'].required = True
+        self.fields['location'].required = True
+        
         if application:
             # Only show restaurants related to the vacancy
             self.fields['restaurant'].queryset = application.vacancy.restaurants.all()
@@ -335,4 +342,20 @@ class InterviewForm(forms.ModelForm):
             # Only show restaurant managers or HR managers as interviewers
             self.fields['interviewer'].queryset = User.objects.filter(
                 profile__role__in=[UserRole.HR_MANAGER, UserRole.RESTAURANT_MANAGER]
-            )
+            ).order_by('first_name', 'last_name')
+            
+    def clean(self):
+        cleaned_data = super().clean()
+        is_online = cleaned_data.get('is_online')
+        meeting_link = cleaned_data.get('meeting_link')
+        location = cleaned_data.get('location')
+        
+        # Если онлайн интервью, то ссылка обязательна
+        if is_online and not meeting_link:
+            raise forms.ValidationError('Для онлайн интервью необходимо указать ссылку на встречу.')
+            
+        # Если не онлайн, то местоположение обязательно
+        if not is_online and not location:
+            raise forms.ValidationError('Для офлайн интервью необходимо указать место проведения.')
+            
+        return cleaned_data

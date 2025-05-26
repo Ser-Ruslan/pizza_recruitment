@@ -26,18 +26,37 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Handle online/in-person interview form toggle
     const isOnlineCheckbox = document.getElementById('id_is_online');
-    const meetingLinkField = document.getElementById('div_id_meeting_link');
-    const locationField = document.getElementById('div_id_location');
+    let meetingLinkField = document.getElementById('div_id_meeting_link');
+    let locationField = document.getElementById('div_id_location');
+
+    // Альтернативные селекторы если crispy forms использует другую структуру
+    if (!meetingLinkField) {
+        const meetingLinkInput = document.getElementById('id_meeting_link');
+        if (meetingLinkInput) {
+            meetingLinkField = meetingLinkInput.closest('.form-group') || meetingLinkInput.closest('.mb-3') || meetingLinkInput.parentElement;
+        }
+    }
+
+    if (!locationField) {
+        const locationInput = document.getElementById('id_location');
+        if (locationInput) {
+            locationField = locationInput.closest('.form-group') || locationInput.closest('.mb-3') || locationInput.parentElement;
+        }
+    }
 
     if (isOnlineCheckbox && meetingLinkField && locationField) {
         // Function to toggle visibility based on checkbox
         function toggleInterviewFields() {
-            if (isOnlineCheckbox.checked) {
-                meetingLinkField.style.display = 'block';
-                locationField.style.display = 'none';
-            } else {
-                meetingLinkField.style.display = 'none';
-                locationField.style.display = 'block';
+            try {
+                if (isOnlineCheckbox.checked) {
+                    if (meetingLinkField) meetingLinkField.style.display = 'block';
+                    if (locationField) locationField.style.display = 'none';
+                } else {
+                    if (meetingLinkField) meetingLinkField.style.display = 'none';
+                    if (locationField) locationField.style.display = 'block';
+                }
+            } catch (error) {
+                console.log('Error toggling interview fields:', error);
             }
         }
 

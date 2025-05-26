@@ -208,6 +208,142 @@ main {
     h2 {
         font-size: 1.5rem;
     }
+    
+    /* Адаптивность для дашборда */
+    .card-header .d-flex {
+        flex-direction: column;
+        align-items: flex-start !important;
+    }
+    
+    .card-header .d-flex > * {
+        margin-bottom: 0.5rem;
+    }
+    
+    .trends-grid {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+    
+    .metric-value {
+        font-size: 1.5rem;
+    }
+    
+    .chart-container {
+        height: 250px !important;
+    }
+    
+    .badge {
+        font-size: 0.7rem;
+        margin: 0.1rem;
+    }
+    
+    .btn-group {
+        flex-direction: column;
+    }
+    
+    .table-responsive {
+        font-size: 0.85rem;
+    }
+    
+    .period-selector {
+        padding: 0.25rem;
+    }
+    
+    .period-btn {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.75rem;
+        margin: 0.1rem;
+    }
+    
+    /* Скрываем иконки на очень маленьких экранах */
+    .fa-2x {
+        display: none;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .container {
+        padding: 0 10px;
+    }
+    
+    .card {
+        margin-bottom: 1rem;
+    }
+    
+    .card-body {
+        padding: 1rem;
+    }
+    
+    .chart-container {
+        height: 200px !important;
+        padding: 0.5rem;
+    }
+    
+    .trends-grid .card {
+        padding: 0.75rem;
+    }
+    
+    .metric-value {
+        font-size: 1.3rem;
+    }
+    
+    .metric-label {
+        font-size: 0.8rem;
+    }
+    
+    .trend-value {
+        font-size: 0.75rem;
+    }
+    
+    .table th, .table td {
+        padding: 0.5rem 0.25rem;
+        font-size: 0.8rem;
+    }
+    
+    .btn {
+        font-size: 0.85rem;
+        padding: 0.4rem 0.8rem;
+    }
+    
+    .btn-sm {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+    }
+    
+    .navbar-brand {
+        font-size: 1.1rem;
+    }
+    
+    .nav-link {
+        padding: 0.5rem 0.75rem;
+    }
+}
+
+@media (max-width: 375px) {
+    .card-header h3 {
+        font-size: 1rem;
+    }
+    
+    .card-title {
+        font-size: 0.9rem;
+    }
+    
+    .badge {
+        font-size: 0.65rem;
+        padding: 0.2rem 0.4rem;
+    }
+    
+    .metric-value {
+        font-size: 1.1rem;
+    }
+    
+    .chart-container {
+        height: 180px !important;
+    }
+    
+    .trends-grid .card .card-body {
+        padding: 0.5rem;
+    }
 }
 
 /* Status badges */

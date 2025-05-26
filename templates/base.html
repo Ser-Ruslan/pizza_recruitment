@@ -19,25 +19,28 @@
 </head>
 <body>
     <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-danger sticky-top">
-        <div class="container">
-            <a class="navbar-brand" href="{% url 'home' %}">
-                <i class="fas fa-pizza-slice me-2"></i>PizzaJobs
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-danger shadow">
+            <div class="container-fluid px-3">
+                <a class="navbar-brand fw-bold" href="{% url 'home' %}">
+                    <i class="fas fa-pizza-slice me-2"></i><span class="d-none d-sm-inline">Pizza</span>Jobs
+                </a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'home' %}">Главная</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'vacancy_list' %}">Вакансии</a>
-                    </li>
-
-                    {% if user.is_authenticated %}
-                        {% if user.profile.role == 'HR_MANAGER' %}
+                    <ul class="navbar-nav me-auto">
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'home' %}">
+                                <i class="fas fa-home d-lg-none me-1"></i>Главная
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'vacancy_list' %}">
+                                <i class="fas fa-briefcase d-lg-none me-1"></i>Вакансии
+                            </a>
+                        </li>
+                        {% if user.is_authenticated %}
+                            {% if user.profile.role == 'HR_MANAGER' %}
                             <li class="nav-item">
                                 <a class="nav-link" href="{% url 'hr_dashboard' %}">HR Панель</a>
                             </li>
@@ -91,15 +94,25 @@
                 </ul>
 
                 <ul class="navbar-nav">
-                    {% if user.is_authenticated %}
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle position-relative" href="#" id="notificationDropdown" role="button" data-bs-toggle="dropdown">
-                                <i class="fas fa-bell"></i>
-                                {% if unread_count %}
-                                    <span class="badge rounded-pill bg-light text-danger position-absolute top-0 start-100 translate-middle">
-                                        {{ unread_count }}
-                                    </span>
-                                {% endif %}
+                        {% if user.is_authenticated %}
+                            <li class="nav-item dropdown d-block d-lg-none">
+                                <a class="nav-link" href="{% url 'notifications' %}">
+                                    <i class="fas fa-bell me-1"></i>Уведомления
+                                    {% if unread_count %}
+                                        <span class="badge bg-warning text-dark ms-1">
+                                            {{ unread_count }}
+                                        </span>
+                                    {% endif %}
+                                </a>
+                            </li>
+                            <li class="nav-item dropdown d-none d-lg-block">
+                                <a class="nav-link dropdown-toggle position-relative" href="#" id="notificationDropdown" role="button" data-bs-toggle="dropdown">
+                                    <i class="fas fa-bell"></i>
+                                    {% if unread_count %}
+                                        <span class="badge rounded-pill bg-light text-danger position-absolute top-0 start-100 translate-middle">
+                                            {{ unread_count }}
+                                        </span>
+                                    {% endif %}
 
                             </a>
                             <div class="dropdown-menu dropdown-menu-end" aria-labelledby="notificationDropdown" style="min-width: 16rem;">

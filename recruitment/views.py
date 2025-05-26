@@ -463,7 +463,12 @@ def application_detail(request, application_id):
             return HttpResponseForbidden("You don't have permission to view this application.")
 
     # Get related data
-    comments = ApplicationComment.objects.filter(application=application).order_by('created_at')
+    # Only show comments to HR managers, restaurant managers and admins
+    if user_profile.role in [UserRole.HR_MANAGER, UserRole.RESTAURANT_MANAGER, UserRole.ADMIN]:
+        comments = ApplicationComment.objects.filter(application=application).order_by('created_at')
+    else:
+        comments = []
+    
     interviews = Interview.objects.filter(application=application).order_by('date_time')
 
     # Forms
@@ -496,7 +501,7 @@ def application_detail(request, application_id):
                 messages.success(request, 'Статус заявки обновлён.')
                 return redirect('application_detail', application_id=application.id)
 
-        # Process comment form submission
+        # Process comment form submission (only for HR and managers)
         elif request.method == 'POST' and 'add_comment' in request.POST:
             comment_form = ApplicationCommentForm(request.POST)
             if comment_form.is_valid():
@@ -521,10 +526,25 @@ def application_detail(request, application_id):
                 interview.scheduled_by = request.user
                 interview.save()
 
-                # Update application status
-                old_status = application.status
-                application.status = ApplicationStatus.INTERVIEW_SCHEDULED
-                application.save()
+                # Update application status only if it's not already interview scheduled
+                if application.status != ApplicationStatus.INTERVIEW_SCHEDULED:
+                    application.status = ApplicationStatus.INTERVIEW_SCHEDULED
+                    application.save()
+
+                # Create notification for candidate
+                Notification.objects.create(
+                    user=application.user,
+                    title="Собеседование назначено",
+                    message=f"Для вашей заявки на вакансию '{application.vacancy.title}' назначено собеседование на {interview.date_time.strftime('%d.%m.%Y в %H:%M')}."
+                )
+
+                # Create notification for interviewer if assigned
+                if interview.interviewer and interview.interviewer != request.user:
+                    Notification.objects.create(
+                        user=interview.interviewer,
+                        title="Вас назначили интервьюером",
+                        message=f"Вас назначили интервьюером для {application.user.get_full_name()} по вакансии '{application.vacancy.title}' на {interview.date_time.strftime('%d.%m.%Y в %H:%M')}."
+                    )
 
                 messages.success(request, 'Собеседование успешно назначено.')
                 return redirect('application_detail', application_id=application.id)
@@ -666,6 +686,26 @@ def hr_dashboard(request):
 
         # Интервью
         interviews_scheduled = Application.objects.filter(status='INTERVIEW_SCHEDULED').count()
+        
+        # Получаем все интервью для подсчета
+        all_interviews = Interview.objects.all()
+        total_interviews_count = all_interviews.count()
+        
+        # Запланированные интервью (только будущие)
+        upcoming_interviews = Interview.objects.filter(
+            date_time__gte=timezone.now(),
+            status__in=['SCHEDULED', 'CONFIRMED']
+        ).select_related('application__user', 'application__vacancy', 'interviewer').order_by('date_time')[:10]
+        
+        # Завершенные интервью (учитываем все завершенные и проведенные)
+        completed_interviews = Interview.objects.filter(
+            Q(status='COMPLETED') | Q(date_time__lt=timezone.now())
+        ).count()
+        
+        # Интервью в процессе или завершенные
+        processed_interviews = Interview.objects.filter(
+            status__in=['COMPLETED', 'IN_PROGRESS', 'CONFIRMED']
+        ).count()
 
         # === НЕДАВНИЕ ОТКЛИКИ ===
         recent_applications = (
@@ -767,6 +807,12 @@ def hr_dashboard(request):
                 status__in=['ACCEPTED', 'INTERVIEW_SCHEDULED', 'REJECTED']
             ).count(),
             'test_statistics': test_statistics,
+            
+            # Статистика интервью
+            'upcoming_interviews': upcoming_interviews,
+            'total_interviews_count': total_interviews_count,
+            'completed_interviews': completed_interviews,
+            'processed_interviews': processed_interviews,
 
             # Данные трендов (сериализуем в JSON)
             'trend_data': json.dumps(trend_data),
@@ -1614,20 +1660,90 @@ def test_statistics(request):
         'total_attempts': total_attempts,
         'passed_attempts': passed_attempts,
         'success_rate': (passed_attempts * 100 / total_attempts) if total_attempts > 0 else 0,
-        'tests_data': []
+        'tests_data': [],
+        'question_analytics': []
     }
 
     for test in tests:
         test_attempts = test.attempts.all()
         total = test_attempts.count()
         passed = test_attempts.filter(passed=True).count()
+        avg_score = test_attempts.aggregate(Avg('score'))['score__avg'] or 0
+        
+        # Анализ вопросов для этого теста
+        question_stats = []
+        for question in test.questions.all():
+            # Получаем все ответы на этот вопрос
+            user_answers = UserAnswer.objects.filter(question=question)
+            total_answers = user_answers.count()
+            
+            if total_answers > 0:
+                # Считаем правильные ответы
+                correct_answers = user_answers.filter(selected_answer__is_correct=True).count()
+                incorrect_answers = total_answers - correct_answers
+                error_rate = (incorrect_answers * 100 / total_answers) if total_answers > 0 else 0
+                
+                # Статистика по вариантам ответов
+                answer_distribution = {}
+                for answer in question.answers.all():
+                    answer_count = user_answers.filter(selected_answer=answer).count()
+                    answer_distribution[answer.text] = {
+                        'count': answer_count,
+                        'percentage': (answer_count * 100 / total_answers) if total_answers > 0 else 0,
+                        'is_correct': answer.is_correct
+                    }
+                
+                question_stats.append({
+                    'question': question,
+                    'total_answers': total_answers,
+                    'correct_answers': correct_answers,
+                    'error_rate': error_rate,
+                    'difficulty_level': 'Высокая' if error_rate > 50 else 'Средняя' if error_rate > 30 else 'Низкая',
+                    'answer_distribution': answer_distribution
+                })
+        
         statistics['tests_data'].append({
             'test': test,
             'total_attempts': total,
             'passed_attempts': passed,
             'success_rate': (passed * 100 / total) if total > 0 else 0,
-            'avg_score': test_attempts.aggregate(Avg('score'))['score__avg'] or 0
+            'avg_score': avg_score,
+            'question_stats': question_stats
         })
+
+    # Создаем общую статистику по всем вопросам для JavaScript
+    all_questions_stats = []
+    for test_data in statistics['tests_data']:
+        for q_stat in test_data['question_stats']:
+            all_questions_stats.append({
+                'test_title': test_data['test'].position_type.title,
+                'question_text': q_stat['question'].text[:50] + '...' if len(q_stat['question'].text) > 50 else q_stat['question'].text,
+                'error_rate': q_stat['error_rate'],
+                'total_answers': q_stat['total_answers']
+            })
+    
+    # Сортируем по сложности
+    all_questions_stats.sort(key=lambda x: x['error_rate'], reverse=True)
+    statistics['question_analytics'] = all_questions_stats
+
+    # Добавляем данные для диаграммы распределения результатов
+    score_distribution = [0, 0, 0, 0, 0]  # 0-20, 21-40, 41-60, 61-80, 81-100
+    all_attempts = TestAttempt.objects.filter(score__isnull=False)
+    
+    for attempt in all_attempts:
+        score = attempt.score
+        if score <= 20:
+            score_distribution[0] += 1
+        elif score <= 40:
+            score_distribution[1] += 1
+        elif score <= 60:
+            score_distribution[2] += 1
+        elif score <= 80:
+            score_distribution[3] += 1
+        else:
+            score_distribution[4] += 1
+    
+    statistics['score_distribution'] = score_distribution
 
     return render(request, 'hr/test_statistics.html', {'statistics': statistics})
 

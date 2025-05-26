@@ -90,7 +90,9 @@
             </div>
 
             <!-- Комментарии -->
-            <div class="card shadow mb-4">
+            
+                {% if user.profile.role == 'HR_MANAGER' or user.profile.role == 'RESTAURANT_MANAGER' or user.profile.role == 'ADMIN' %}
+                <div class="card shadow mb-4">
                     <div class="card-header bg-white">
                         <h3 class="h5 mb-0">Внутренние комментарии</h3>
                     </div>
@@ -98,7 +100,7 @@
                         {% if comments %}
                             <div class="comments-list">
                                 {% for comment in comments %}
-                                    {% if comment.is_approved or comment.author == user or user.profile.role in 'HR_MANAGER,RESTAURANT_MANAGER'|stringformat:'s'|make_list %}
+                                    {% if comment.is_approved or comment.author == user or user.profile.role == 'HR_MANAGER' or user.profile.role == 'RESTAURANT_MANAGER' %}
                                         <div class="comment mb-3 pb-3 {% if not forloop.last %}border-bottom{% endif %}">
                                             <div class="d-flex justify-content-between align-items-start">
                                                 <div>
@@ -109,7 +111,7 @@
                                                 </div>
                                                 <div class="d-flex align-items-center">
                                                     <small class="text-muted me-2">{{ comment.created_at|date:"j F Y, H:i" }}</small>
-                                                    {% if user == comment.author or user.profile.role in 'HR_MANAGER,RESTAURANT_MANAGER'|stringformat:'s'|make_list %}
+                                                    {% if user == comment.author or user.profile.role == 'HR_MANAGER' or user.profile.role == 'RESTAURANT_MANAGER' %}
                                                         <form method="post" action="{% url 'delete_comment' comment.id %}" class="d-inline">
                                                             {% csrf_token %}
                                                             <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Удалить комментарий?')">
@@ -117,7 +119,7 @@
                                                             </button>
                                                         </form>
                                                     {% endif %}
-                                                    {% if comment.needs_moderation and user.profile.role in 'HR_MANAGER,RESTAURANT_MANAGER'|stringformat:'s'|make_list %}
+                                                    {% if comment.needs_moderation and user.profile.role == 'HR_MANAGER' or user.profile.role == 'RESTAURANT_MANAGER' %}
                                                         <form method="post" action="{% url 'moderate_comment' comment.id %}" class="d-inline ms-1">
                                                             {% csrf_token %}
                                                             <input type="hidden" name="action" value="approve">
@@ -158,6 +160,7 @@
                         </form>
                     </div>
                 </div>
+                {% endif %}
 
             <!-- Раздел собеседований -->
             {% if interviews %}
@@ -390,4 +393,53 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Управление полями формы интервью
+    const isOnlineCheckbox = document.querySelector('#id_is_online');
+    const locationField = document.querySelector('#id_location');
+    const meetingLinkField = document.querySelector('#id_meeting_link');
+
+    if (isOnlineCheckbox && locationField && meetingLinkField) {
+        function toggleFields() {
+            if (isOnlineCheckbox.checked) {
+                // Проверяем существование родительских элементов
+                const locationGroup = locationField.closest('.form-group') || locationField.closest('.mb-3') || locationField.parentElement;
+                const meetingGroup = meetingLinkField.closest('.form-group') || meetingLinkField.closest('.mb-3') || meetingLinkField.parentElement;
+
+                if (locationGroup) {
+                    locationGroup.style.display = 'none';
+                    locationField.required = false;
+                }
+                if (meetingGroup) {
+                    meetingGroup.style.display = 'block';
+                    meetingLinkField.required = true;
+                }
+            } else {
+                // Проверяем существование родительских элементов
+                const locationGroup = locationField.closest('.form-group') || locationField.closest('.mb-3') || locationField.parentElement;
+                const meetingGroup = meetingLinkField.closest('.form-group') || meetingLinkField.closest('.mb-3') || meetingLinkField.parentElement;
+
+                if (locationGroup) {
+                    locationGroup.style.display = 'block';
+                    locationField.required = true;
+                }
+                if (meetingGroup) {
+                    meetingGroup.style.display = 'none';
+                    meetingLinkField.required = false;
+                }
+            }
+        }
+
+        // Инициализация
+        toggleFields();
+
+        // Обработчик изменения
+        isOnlineCheckbox.addEventListener('change', toggleFields);
+    }
+});
+</script>
 {% endblock %}
