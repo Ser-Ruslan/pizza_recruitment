@@ -542,75 +542,109 @@ def application_detail(request, application_id):
 @login_required
 @hr_required
 def hr_dashboard(request):
-    # Get statistics
-    total_vacancies = Vacancy.objects.count()
-    active_vacancies = Vacancy.objects.filter(is_active=True).count()
-    total_applications = Application.objects.count()
-    new_regular_applications = Application.objects.filter(status=ApplicationStatus.NEW).count()
-    new_quick_applications = QuickApplication.objects.filter(status=ApplicationStatus.NEW).count()
-    new_applications = new_regular_applications + new_quick_applications
-    interviews_scheduled = Interview.objects.filter(
-        date_time__gte=timezone.now()
-    ).count()
+        # Проверка роли через профиль
+        try:
+            user_profile = request.user.profile
+            if user_profile.role not in ['HR_MANAGER', 'ADMIN']:
+                messages.error(request, 'У вас нет доступа к этой странице.')
+                return redirect('dashboard')
+        except UserProfile.DoesNotExist:
+            messages.error(request, 'Профиль пользователя не найден.')
+            return redirect('dashboard')
 
-    # Recent applications
-    recent_applications = Application.objects.order_by('-applied_at')[:10]
+        # === СТАТИСТИКА ПО ВАКАНСИЯМ ===
+        total_vacancies = Vacancy.objects.count()
+        active_vacancies = Vacancy.objects.filter(is_active=True).count()
 
-    # Vacancies by status
-    vacancies_by_status = Vacancy.objects.values('is_active').annotate(
-        count=Count('id')
-    )
+        vacancies_by_status = (
+            Vacancy.objects
+            .values('is_active')
+            .annotate(count=Count('id'))
+            .order_by('is_active')
+        )
 
-    # Applications by status
-    applications_by_status = Application.objects.values('status').annotate(
-        count=Count('id')
-    )
+        # === СТАТИСТИКА ПО ОТКЛИКАМ ===
+        # Обычные отклики
+        total_applications = Application.objects.count()
+        new_regular_applications = Application.objects.filter(status='NEW').count()  # ИЗМЕНЕНО
 
-    # Test statistics
-    total_test_attempts = TestAttempt.objects.count()
-    passed_test_attempts = TestAttempt.objects.filter(passed=True).count()
-    test_success_rate = (passed_test_attempts * 100 / total_test_attempts) if total_test_attempts > 0 else 0
-    
-    # Statistics by competency (position type)
-    competency_stats = []
-    # Get all active tests
-    all_tests = Test.objects.filter(is_active=True)
-    
-    for test in all_tests:
-        test_attempts = test.attempts.all()
-        total = test_attempts.count()
-        passed = test_attempts.filter(passed=True).count()
-        avg_score = test_attempts.aggregate(Avg('score'))['score__avg'] or 0
-        
-        competency_stats.append({
-            'position_type': test.position_type.title,
-            'total_attempts': total,
-            'passed_attempts': passed,
-            'success_rate': (passed * 100 / total) if total > 0 else 0,
-            'avg_score': avg_score
-        })
+        applications_by_status = (
+            Application.objects
+            .values('status')
+            .annotate(count=Count('id'))
+            .order_by('status')
+        )
 
-    test_statistics = {
-        'total_attempts': total_test_attempts,
-        'passed_attempts': passed_test_attempts,
-        'success_rate': test_success_rate,
-        'competency_stats': competency_stats
-    }
+        # Быстрые отклики
+        total_quick_applications = QuickApplication.objects.count()
+        new_quick_applications = QuickApplication.objects.filter(status='NEW').count()
 
-    context = {
-        'total_vacancies': total_vacancies,
-        'active_vacancies': active_vacancies,
-        'total_applications': total_applications,
-        'new_applications': new_applications,
-        'new_regular_applications': new_regular_applications,
-        'new_quick_applications': new_quick_applications,
-        'interviews_scheduled': interviews_scheduled,
-        'recent_applications': recent_applications,
-        'vacancies_by_status': vacancies_by_status,
-        'applications_by_status': applications_by_status,
-        'test_statistics': test_statistics,
-    }
-    return render(request, 'hr/dashboard.html', context)
+        # Общие отклики
+        total_all_applications = total_applications + total_quick_applications
+        new_applications = new_regular_applications + new_quick_applications  # ИЗМЕНЕНО
+
+        # Интервью
+        interviews_scheduled = Application.objects.filter(status='INTERVIEW_SCHEDULED').count()
+
+        # === НЕДАВНИЕ ОТКЛИКИ ===
+        recent_applications = (
+            Application.objects
+            .select_related('user', 'vacancy')
+            .order_by('-applied_at')[:10]
+        )
+
+        # === СТАТИСТИКА ТЕСТИРОВАНИЯ ===
+        test_attempts = TestAttempt.objects.all()
+        total_attempts = test_attempts.count()
+        passed_attempts = test_attempts.filter(passed=True).count()
+        success_rate = (passed_attempts * 100 / total_attempts) if total_attempts > 0 else 0
+
+        # Статистика по компетенциям
+        competency_stats = []
+        position_types = PositionType.objects.filter(test__isnull=False, test__is_active=True).distinct()
+
+        for position_type in position_types:
+            attempts = TestAttempt.objects.filter(test=position_type.test)
+            total = attempts.count()
+            passed = attempts.filter(passed=True).count()
+            avg_score = attempts.aggregate(Avg('score'))['score__avg'] or 0
+            success_rate_comp = (passed * 100 / total) if total > 0 else 0
+
+            competency_stats.append({
+                'position_type': position_type.title,
+                'total_attempts': total,
+                'passed_attempts': passed,
+                'success_rate': success_rate_comp,
+                'avg_score': avg_score,
+            })
+
+        test_statistics = {
+            'total_attempts': total_attempts,
+            'passed_attempts': passed_attempts,
+            'success_rate': success_rate,
+            'competency_stats': competency_stats,
+        }
+
+        context = {
+            # Статистика вакансий
+            'total_vacancies': total_vacancies,
+            'active_vacancies': active_vacancies,
+            'vacancies_by_status': vacancies_by_status,
+
+            # Статистика откликов
+            'total_applications': total_applications,
+            'new_regular_applications': new_regular_applications,  # ИЗМЕНЕНО
+            'new_quick_applications': new_quick_applications,
+            'new_applications': new_applications,
+            'applications_by_status': applications_by_status,
+
+            # Прочая статистика
+            'recent_applications': recent_applications,
+            'interviews_scheduled': interviews_scheduled,
+            'test_statistics': test_statistics,
+        }
+
+        return render(request, 'hr/dashboard.html', context)
 
 @login_required
 @hr_required
@@ -1180,14 +1214,15 @@ def manage_tests(request):
 @login_required
 @hr_required
 def create_tests_for_all_vacancies(request):
-    vacancies = Vacancy.objects.filter(test__isnull=True)
+    # Создаем тесты для всех типов позиций, у которых нет тестов
+    position_types = PositionType.objects.filter(test__isnull=True)
     
-    for vacancy in vacancies:
-        # Создаем базовый тест для каждой вакансии
+    for position_type in position_types:
+        # Создаем базовый тест для каждого типа позиции
         test = Test.objects.create(
-            vacancy=vacancy,
-            title=f"Тест для вакансии {vacancy.title}",
-            description=f"Тестирование знаний и навыков для позиции {vacancy.title}",
+            position_type=position_type,
+            title=f"Тест для позиции {position_type.title}",
+            description=f"Тестирование знаний и навыков для позиции {position_type.title}",
             time_limit=30,
             passing_score=70
         )
@@ -1195,7 +1230,7 @@ def create_tests_for_all_vacancies(request):
         # Создаем базовые вопросы для теста
         questions = [
             {
-                "text": f"Опишите ваш опыт работы, связанный с позицией {vacancy.title}",
+                "text": f"Опишите ваш опыт работы, связанный с позицией {position_type.title}",
                 "points": 30,
                 "answers": [
                     {"text": "Имею более 3 лет опыта", "is_correct": True},
@@ -1236,7 +1271,7 @@ def create_tests_for_all_vacancies(request):
                     is_correct=a_data["is_correct"]
                 )
     
-    messages.success(request, 'Тесты успешно созданы для всех вакансий без тестов')
+    messages.success(request, f'Тесты успешно созданы для {len(position_types)} типов позиций')
     return redirect('manage_tests')
 
 @login_required

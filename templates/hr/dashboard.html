@@ -313,25 +313,24 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Общая конфигурация статусов: код -> {label, bootstrapClass, цвет}
+    // Конфигурация статусов откликов
     const statusConfig = {
-        'NEW':                 { label: 'Новые',                   badge: 'bg-primary',      color: 'rgba(13, 110, 253, 0.7)' },
-        'REVIEWING':           { label: 'На рассмотрении',          badge: 'bg-info',         color: 'rgba(13, 202, 240, 0.7)' },
-        'INTERVIEW_SCHEDULED': { label: 'Собеседование назначено',   badge: 'bg-warning text-dark', color: 'rgba(255, 193, 7, 0.7)' },
-        'ACCEPTED':            { label: 'Приняты',                  badge: 'bg-success',      color: 'rgba(25, 135, 84, 0.7)' },
-        'REJECTED':            { label: 'Отклонены',                badge: 'bg-danger',       color: 'rgba(220, 53, 69, 0.7)' }
+        'NEW': { label: 'Новые', badge: 'bg-primary', color: 'rgba(13, 110, 253, 0.7)' },
+        'REVIEWING': { label: 'На рассмотрении', badge: 'bg-info', color: 'rgba(13, 202, 240, 0.7)' },
+        'INTERVIEW_SCHEDULED': { label: 'Собеседование назначено', badge: 'bg-warning text-dark', color: 'rgba(255, 193, 7, 0.7)' },
+        'ACCEPTED': { label: 'Приняты', badge: 'bg-success', color: 'rgba(25, 135, 84, 0.7)' },
+        'REJECTED': { label: 'Отклонены', badge: 'bg-danger', color: 'rgba(220, 53, 69, 0.7)' }
     };
 
     // --- Диаграмма: Отклики по статусу ---
     {% if applications_by_status %}
-    // Собираем динамические массивы
     const statusLabels = [], statusData = [], statusColors = [];
 
     {% for item in applications_by_status %}
-        (function(){
-            const code  = "{{ item.status }}";
+        (function() {
+            const code = "{{ item.status }}";
             const count = {{ item.count }};
-            const cfg   = statusConfig[code] || { label: code, badge: 'bg-secondary', color: 'rgba(108, 117, 125, 0.7)' };
+            const cfg = statusConfig[code] || { label: code, badge: 'bg-secondary', color: 'rgba(108, 117, 125, 0.7)' };
             statusLabels.push(cfg.label);
             statusData.push(count);
             statusColors.push(cfg.color);
@@ -354,13 +353,13 @@ document.addEventListener('DOMContentLoaded', function() {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: { position: 'right', labels:{ boxWidth:15 } }
+                legend: { position: 'right', labels: { boxWidth: 15 } }
             }
         }
     });
     {% endif %}
 
-    // --- Диаграмма: Вакансии по статусу (без изменений) ---
+    // --- Диаграмма: Вакансии по статусу ---
     {% if vacancies_by_status %}
     const vacancyCtx = document.getElementById('vacancyStatusChart').getContext('2d');
     const vacancyData = {
@@ -374,14 +373,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     {% if not item.is_active %}{{ item.count }},{% endif %}
                 {% endfor %}
             ],
-            backgroundColor: [
-                'rgba(25, 135, 84, 0.7)',   // Активные — зелёный (bg-success)
-                'rgba(220, 53, 69, 0.7)'    // Неактивные — красный (bg-danger)
-            ],
-            borderColor: [
-                'rgba(25, 135, 84, 1)',
-                'rgba(220, 53, 69, 1)'
-            ],
+            backgroundColor: ['rgba(25, 135, 84, 0.7)', 'rgba(220, 53, 69, 0.7)'],
+            borderColor: ['rgba(25, 135, 84, 1)', 'rgba(220, 53, 69, 1)'],
             borderWidth: 1
         }]
     };
@@ -391,70 +384,107 @@ document.addEventListener('DOMContentLoaded', function() {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: { legend:{ position:'right', labels:{ boxWidth:15 } } }
+            plugins: {
+                legend: { position: 'right', labels: { boxWidth: 15 } }
+            }
         }
     });
     {% endif %}
 
     // --- Диаграмма: Успешность по компетенциям ---
     {% if test_statistics.competency_stats %}
-    const competencyLabels = [], competencyData = [], competencyColors = [
-        'rgba(255, 99, 132, 0.7)',   // Красный
-        'rgba(54, 162, 235, 0.7)',   // Синий
-        'rgba(255, 205, 86, 0.7)',   // Жёлтый
-        'rgba(75, 192, 192, 0.7)',   // Зелёный
-        'rgba(153, 102, 255, 0.7)',  // Фиолетовый
-        'rgba(255, 159, 64, 0.7)',   // Оранжевый
-        'rgba(199, 199, 199, 0.7)',  // Серый
-        'rgba(83, 102, 255, 0.7)'    // Индиго
+    console.log('Начинаем построение диаграммы компетенций...');
+
+    const competencyLabels = [];
+    const competencyData = [];
+    const colorPalette = [
+        'rgba(255, 99, 132, 0.7)',
+        'rgba(54, 162, 235, 0.7)', 
+        'rgba(255, 205, 86, 0.7)',
+        'rgba(75, 192, 192, 0.7)',
+        'rgba(153, 102, 255, 0.7)',
+        'rgba(255, 159, 64, 0.7)'
     ];
 
+    // Заполняем данные одним циклом
     {% for stat in test_statistics.competency_stats %}
-        competencyLabels.push("{{ stat.position_type }}");
-        competencyData.push({{ stat.success_rate|floatformat:1 }});
+    competencyLabels.push('{{ stat.position_type|escapejs }}');
+    competencyData.push(parseFloat('{{ stat.success_rate|floatformat:1 }}'));
     {% endfor %}
 
-    const competencyCtx = document.getElementById('competencyChart').getContext('2d');
-    new Chart(competencyCtx, {
-        type: 'bar',
-        data: {
-            labels: competencyLabels,
-            datasets: [{
-                label: 'Процент успешности',
-                data: competencyData,
-                backgroundColor: competencyColors.slice(0, competencyLabels.length),
-                borderColor: competencyColors.slice(0, competencyLabels.length).map(c => c.replace('0.7', '1')),
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    max: 100,
-                    ticks: {
-                        callback: function(value) {
-                            return value + '%';
-                        }
-                    }
-                }
-            },
-            plugins: {
-                legend: {
-                    display: false
+    // Генерируем цвета на основе количества элементов
+    const competencyColors = competencyLabels.map((_, index) => colorPalette[index % colorPalette.length]);
+
+    console.log('=== ДИАГРАММА КОМПЕТЕНЦИЙ ===');
+    console.log('Количество компетенций:', competencyLabels.length);
+    console.log('Названия:', competencyLabels);
+    console.log('Данные успешности:', competencyData);
+    console.log('Цвета:', competencyColors);
+    console.log('=============================');
+
+    // Проверяем совпадение длин массивов
+    if (competencyLabels.length === competencyData.length && competencyLabels.length === competencyColors.length) {
+        const competencyCtx = document.getElementById('competencyChart');
+        if (competencyCtx) {
+            new Chart(competencyCtx, {
+                type: 'bar',
+                data: {
+                    labels: competencyLabels,
+                    datasets: [{
+                        label: 'Успешность (%)',
+                        data: competencyData,
+                        backgroundColor: competencyColors,
+                        borderColor: competencyColors.map(color => color.replace('0.7', '1')),
+                        borderWidth: 1
+                    }]
                 },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            return context.parsed.y.toFixed(1) + '%';
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { 
+                            display: false 
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': ' + context.parsed.y.toFixed(1) + '%';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: {
+                                maxRotation: 45,
+                                minRotation: 0
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: {
+                                callback: function(value) {
+                                    return value + '%';
+                                },
+                                stepSize: 20
+                            }
                         }
                     }
                 }
-            }
+            });
+            console.log('Диаграмма компетенций создана успешно');
+        } else {
+            console.error('Элемент competencyChart не найден');
         }
-    });
+    } else {
+        console.error('Несоответствие размеров массивов:');
+        console.error('Labels:', competencyLabels.length);
+        console.error('Data:', competencyData.length);
+        console.error('Colors:', competencyColors.length);
+    }
+    {% else %}
+    console.log('Нет данных test_statistics.competency_stats');
     {% endif %}
 });
 </script>
