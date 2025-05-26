@@ -1,0 +1,83 @@
+
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ action }} вакансии - PizzaJobs{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header bg-white">
+                    <h2 class="card-title h4 mb-0">
+                        <i class="fas fa-plus-circle me-2 text-primary"></i>
+                        Создать новую вакансию
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Вакансия будет создана неактивной и требует одобрения HR менеджера перед публикацией.
+                    </div>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="mb-4">
+                            {{ form.title|as_crispy_field }}
+                        </div>
+                        
+                        <div class="mb-4">
+                            {{ form.position_type|as_crispy_field }}
+                        </div>
+                        
+                        <div class="mb-4">
+                            {{ form.restaurants|as_crispy_field }}
+                            <small class="text-muted">Вы можете выбрать только рестораны, которыми управляете.</small>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-4">
+                                {{ form.salary_min|as_crispy_field }}
+                            </div>
+                            <div class="col-md-6 mb-4">
+                                {{ form.salary_max|as_crispy_field }}
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            {{ form.description|as_crispy_field }}
+                            <small class="text-muted">Кратко опишите суть работы и привлекательные стороны позиции.</small>
+                        </div>
+                        
+                        <div class="mb-4">
+                            {{ form.requirements|as_crispy_field }}
+                            <small class="text-muted">Укажите необходимые навыки, опыт и квалификацию.</small>
+                        </div>
+                        
+                        <div class="mb-4">
+                            {{ form.responsibilities|as_crispy_field }}
+                            <small class="text-muted">Опишите обязанности и задачи сотрудника.</small>
+                        </div>
+                        
+                        <div class="mb-4">
+                            {{ form.conditions|as_crispy_field }}
+                            <small class="text-muted">Укажите график работы, льготы и другие условия.</small>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'manager_dashboard' %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Отмена
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-check me-2"></i>Создать вакансию
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

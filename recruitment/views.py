@@ -32,7 +32,8 @@ from .models import (
 from .forms import (
     UserRegisterForm, UserProfileForm, ResumeUploadForm, 
     VacancyForm, ApplicationForm, ApplicationStatusForm, 
-    InterviewForm, ApplicationCommentForm, QuickApplicationForm
+    InterviewForm, ApplicationCommentForm, QuickApplicationForm,
+    HRCandidateCreationForm, ApplyCandidateForm
 )
 from .decorators import (
     hr_required, restaurant_manager_required, 
@@ -307,7 +308,7 @@ def apply_for_vacancy(request, vacancy_id):
                     user=request.user,
                     passed=True
                 ).exists()
-                
+
                 if not test_passed:
                     # Store application data in session and redirect to test
                     request.session['application_data'] = {
@@ -317,7 +318,7 @@ def apply_for_vacancy(request, vacancy_id):
                     }
                     messages.info(request, 'Данные сохранены. Теперь необходимо пройти тест для этой позиции.')
                     return redirect('take_test', test_id=position_test.id)
-            
+
             # No test required or test already passed - create application
             application = form.save(commit=False)
             application.vacancy = vacancy
@@ -712,6 +713,52 @@ def create_vacancy(request):
     return render(request, 'hr/vacancy_form.html', context)
 
 @login_required
+@restaurant_manager_required
+def create_vacancy_manager(request):
+    if request.method == 'POST':
+        form = VacancyForm(request.POST)
+        if form.is_valid():
+            vacancy = form.save(commit=False)
+            vacancy.created_by = request.user
+            vacancy.is_active = False  # Создается неактивной по умолчанию
+            vacancy.save()
+
+            # Ограничиваем рестораны только теми, которыми управляет менеджер
+            managed_restaurants = Restaurant.objects.filter(manager=request.user)
+            selected_restaurants = form.cleaned_data['restaurants'].filter(id__in=managed_restaurants.values_list('id', flat=True))
+            vacancy.restaurants.set(selected_restaurants)
+
+            # Уведомляем HR менеджеров о новой вакансии
+            hr_users = User.objects.filter(profile__role=UserRole.HR_MANAGER)
+            restaurant_names = ', '.join([r.name for r in selected_restaurants.all()])
+            
+            for hr in hr_users:
+                Notification.objects.create(
+                    user=hr,
+                    title=f'Новая вакансия от менеджера ресторана',
+                    message=f'Менеджер {request.user.get_full_name()} создал новую вакансию "{vacancy.title}" для ресторанов: {restaurant_names}. Требуется одобрение.'
+                )
+
+            messages.success(request, 'Вакансия создана и отправлена на одобрение HR менеджеру.')
+            return redirect('manager_dashboard')
+    else:
+        # Создаем форму только с ресторанами, которыми управляет менеджер
+        form = VacancyForm()
+        managed_restaurants = Restaurant.objects.filter(manager=request.user)
+        form.fields['restaurants'].queryset = managed_restaurants
+        
+        if not managed_restaurants.exists():
+            messages.error(request, 'Вы не управляете ни одним рестораном. Обратитесь к администратору.')
+            return redirect('manager_dashboard')
+
+    context = {
+        'form': form,
+        'action': 'Create',
+        'is_manager': True,
+    }
+    return render(request, 'manager/vacancy_form.html', context)
+
+@login_required
 @hr_required
 def edit_vacancy(request, vacancy_id):
     vacancy = get_object_or_404(Vacancy, id=vacancy_id)
@@ -934,9 +981,9 @@ def convert_quick_application(request, app_id):
         username = quick_app.email.split('@')[0]
         if User.objects.filter(username=username).exists():
             username = f"{username}_{random.randint(1000, 9999)}"
-        
+
         password = ''.join(random.choices(string.ascii_letters + string.digits, k=12))
-        
+
         user = User.objects.create_user(
             username=username,
             email=quick_app.email,
@@ -957,7 +1004,7 @@ def convert_quick_application(request, app_id):
         if position_test and position_test.is_active:
             test_token = ''.join(random.choices(string.ascii_letters + string.digits, k=32))
             quick_app.test_token = test_token
-        
+
         quick_app.status = ApplicationStatus.REVIEWING
         quick_app.user_created = user
         quick_app.save()
@@ -1007,7 +1054,7 @@ def convert_quick_application(request, app_id):
             )
 
         messages.success(request, f'Аккаунт создан для {quick_app.full_name}. Данные: Логин: {username}, Пароль: {password}. Email отправлен.')
-        
+
         return redirect('quick_applications')
 
     return HttpResponseNotAllowed(['POST'])
@@ -1018,6 +1065,17 @@ def logout_view(request):
         messages.success(request, 'Вы успешно вышли из системы')
         return redirect('home')
     return render(request, 'registration/logout.html')
+@login_required
+@hr_required
+def select_position_for_test(request):
+    # Получаем все типы позиций, у которых еще нет тестов
+    position_types_without_tests = PositionType.objects.filter(test__isnull=True)
+
+    context = {
+        'position_types': position_types_without_tests,
+    }
+    return render(request, 'hr/select_position_for_test.html', context)
+
 @login_required
 @hr_required
 def create_test(request, position_type_id):
@@ -1066,7 +1124,7 @@ def take_test(request, test_id):
         # Handle session data for redirects
         quick_app_id = request.session.get('quick_app_id')
         application_data = request.session.get('application_data')
-        
+
         if quick_app_id:
             del request.session['quick_app_id']
             quick_app = QuickApplication.objects.get(id=quick_app_id)
@@ -1128,12 +1186,12 @@ def take_test(request, test_id):
             # Check what type of application this is for
             quick_app_id = request.session.get('quick_app_id')
             application_data = request.session.get('application_data')
-            
+
             if quick_app_id:
                 # Quick application process
                 del request.session['quick_app_id']
                 quick_app = QuickApplication.objects.get(id=quick_app_id)
-                
+
                 # Send quick application
                 for restaurant in quick_app.vacancy.restaurants.all():
                     if restaurant.manager:
@@ -1142,14 +1200,14 @@ def take_test(request, test_id):
                             title=f"Быстрый отклик на {quick_app.vacancy.title}",
                             message=f"Получен быстрый отклик от {quick_app.full_name} на вакансию {quick_app.vacancy.title}."
                         )
-                
+
                 messages.success(request, f'Поздравляем! Вы успешно прошли тест с результатом {attempt.score:.1f}%. Ваш быстрый отклик отправлен.')
                 return redirect('vacancy_detail', vacancy_id=quick_app.vacancy.id)
-                
+
             elif application_data:
                 # Regular application process
                 del request.session['application_data']
-                
+
                 # Create the application
                 application = Application.objects.create(
                     vacancy_id=application_data['vacancy_id'],
@@ -1157,10 +1215,10 @@ def take_test(request, test_id):
                     resume_id=application_data['resume_id'],
                     cover_letter=application_data['cover_letter']
                 )
-                
+
                 messages.success(request, f'Поздравляем! Вы успешно прошли тест с результатом {attempt.score:.1f}%. Ваша заявка отправлена.')
                 return redirect('vacancy_detail', vacancy_id=application.vacancy.id)
-                
+
             else:
                 # Direct test taking
                 messages.success(request, f'Поздравляем! Вы успешно прошли тест с результатом {attempt.score:.1f}%')
@@ -1174,7 +1232,7 @@ def take_test(request, test_id):
             # Test failed
             quick_app_id = request.session.get('quick_app_id')
             application_data = request.session.get('application_data')
-            
+
             if quick_app_id:
                 del request.session['quick_app_id']
                 quick_app = QuickApplication.objects.get(id=quick_app_id)
@@ -1216,7 +1274,7 @@ def manage_tests(request):
 def create_tests_for_all_vacancies(request):
     # Создаем тесты для всех типов позиций, у которых нет тестов
     position_types = PositionType.objects.filter(test__isnull=True)
-    
+
     for position_type in position_types:
         # Создаем базовый тест для каждого типа позиции
         test = Test.objects.create(
@@ -1226,7 +1284,7 @@ def create_tests_for_all_vacancies(request):
             time_limit=30,
             passing_score=70
         )
-        
+
         # Создаем базовые вопросы для теста
         questions = [
             {
@@ -1257,7 +1315,7 @@ def create_tests_for_all_vacancies(request):
                 ]
             }
         ]
-        
+
         for q_data in questions:
             question = Question.objects.create(
                 test=test,
@@ -1270,7 +1328,7 @@ def create_tests_for_all_vacancies(request):
                     text=a_data["text"],
                     is_correct=a_data["is_correct"]
                 )
-    
+
     messages.success(request, f'Тесты успешно созданы для {len(position_types)} типов позиций')
     return redirect('manage_tests')
 
@@ -1278,17 +1336,17 @@ def create_tests_for_all_vacancies(request):
 @hr_required
 def edit_test(request, test_id):
     test = get_object_or_404(Test, id=test_id)
-    
+
     if request.method == 'POST':
         test.title = request.POST['title']
         test.description = request.POST['description']
         test.time_limit = request.POST['time_limit']
         test.passing_score = request.POST['passing_score']
         test.save()
-        
+
         # Delete existing questions and answers
         test.questions.all().delete()
-        
+
         # Create new questions and answers
         questions_data = json.loads(request.POST['questions'])
         for q_data in questions_data:
@@ -1303,10 +1361,10 @@ def edit_test(request, test_id):
                     text=a_data['text'],
                     is_correct=a_data['is_correct']
                 )
-        
+
         messages.success(request, 'Тест успешно обновлен')
         return redirect('manage_tests')
-        
+
     return render(request, 'hr/edit_test.html', {'test': test})
 
 @login_required
@@ -1321,16 +1379,16 @@ def delete_test(request, test_id):
 def take_test_by_token(request, token):
     quick_app = get_object_or_404(QuickApplication, test_token=token)
     test = quick_app.vacancy.position_type.test
-    
+
     if not test or not test.is_active:
         messages.error(request, 'Тест для данной позиции не найден или неактивен.')
         return redirect('home')
-    
+
     # Check if user is authenticated and it's the right user
     if not request.user.is_authenticated:
         messages.warning(request, 'Для прохождения теста необходимо войти в систему.')
         return redirect('login')
-    
+
     if request.user != quick_app.user_created:
         messages.error(request, 'У вас нет доступа к данному тесту.')
         return redirect('home')
@@ -1373,7 +1431,7 @@ def take_test_by_token(request, token):
             # Update quick application status
             quick_app.status = ApplicationStatus.ACCEPTED
             quick_app.save()
-            
+
             # Create regular application
             regular_app = Application.objects.create(
                 vacancy=quick_app.vacancy,
@@ -1381,13 +1439,13 @@ def take_test_by_token(request, token):
                 cover_letter=quick_app.cover_letter,
                 status=ApplicationStatus.NEW
             )
-            
+
             # Calculate time spent on test
             time_spent = attempt.end_time - attempt.start_time
             minutes_spent = int(time_spent.total_seconds() // 60)
             seconds_spent = int(time_spent.total_seconds() % 60)
             time_str = f"{minutes_spent} мин {seconds_spent} сек"
-            
+
             # Notify HR managers about test completion and application conversion
             hr_users = User.objects.filter(profile__role=UserRole.HR_MANAGER)
             for hr in hr_users:
@@ -1408,7 +1466,7 @@ def take_test_by_token(request, token):
                     [hr.email],
                     fail_silently=False,
                 )
-            
+
             messages.success(request, f'Поздравляем! Вы успешно прошли тест с результатом {attempt.score:.1f}%. Ваша заявка принята и направлена на рассмотрение.')
             return redirect('home')
         else:
@@ -1423,7 +1481,7 @@ def test_statistics(request):
     tests = Test.objects.all()
     total_attempts = TestAttempt.objects.count()
     passed_attempts = TestAttempt.objects.filter(passed=True).count()
-    
+
     statistics = {
         'total_attempts': total_attempts,
         'passed_attempts': passed_attempts,
@@ -1449,41 +1507,207 @@ def test_statistics(request):
 @candidate_required
 def candidate_tests(request):
     user = request.user
-    
-    # Get all active tests
-    tests = Test.objects.filter(is_active=True)
-    
+
+    # Получаем все заявки пользователя (обычные и быстрые)
+    user_applications = Application.objects.filter(user=user)
+    quick_applications = QuickApplication.objects.filter(user_created=user)
+
+    # Собираем все типы позиций, на которые пользователь подавал заявки
+    applied_position_types = set()
+
+    # Из обычных заявок
+    for app in user_applications:
+        applied_position_types.add(app.vacancy.position_type)
+
+    # Из быстрых заявок (только те, где создан аккаунт)
+    for quick_app in quick_applications:
+        applied_position_types.add(quick_app.vacancy.position_type)
+
+    # Получаем тесты только для тех позиций, на которые подавались заявки
+    tests = Test.objects.filter(
+        is_active=True,
+        position_type__in=applied_position_types
+    )
+
     test_data = []
     for test in tests:
         # Get user's attempts for this test
         user_attempts = TestAttempt.objects.filter(test=test, user=user).order_by('-start_time')
-        
+
         # Check if user has passed this test
         passed_attempt = user_attempts.filter(passed=True).first()
-        
+
         # Get latest attempt
         latest_attempt = user_attempts.first()
-        
-        # Find related vacancies for this position type
-        related_vacancies = Vacancy.objects.filter(
-            position_type=test.position_type, 
-            is_active=True
-        )
-        
+
+        # Найти связанные вакансии, на которые пользователь подавал заявки
+        user_related_vacancies = []
+
+        # Из обычных заявок
+        for app in user_applications:
+            if app.vacancy.position_type == test.position_type:
+                user_related_vacancies.append(app.vacancy)
+
+        # Из быстрых заявок
+        for quick_app in quick_applications:
+            if quick_app.vacancy.position_type == test.position_type:
+                user_related_vacancies.append(quick_app.vacancy)
+
+        # Убираем дубликаты
+        user_related_vacancies = list(set(user_related_vacancies))
+
         test_data.append({
             'test': test,
             'passed_attempt': passed_attempt,
             'latest_attempt': latest_attempt,
             'all_attempts': user_attempts,
-            'related_vacancies': related_vacancies,
+            'related_vacancies': user_related_vacancies,
             'can_retake': not passed_attempt,  # Can retake if not passed yet
         })
-    
+
     context = {
         'test_data': test_data,
         'total_tests': tests.count(),
         'passed_tests': len([td for td in test_data if td['passed_attempt']]),
         'pending_tests': len([td for td in test_data if not td['passed_attempt']]),
     }
-    
+
     return render(request, 'candidates/tests.html', context)
+
+def privacy_policy(request):
+    from django.utils import timezone
+    context = {
+        'current_date': timezone.now()
+    }
+    return render(request, 'legal/privacy_policy.html', context)
+
+@login_required
+@hr_required
+def manage_candidates(request):
+    # Get all candidates with their application statistics
+    candidates = User.objects.filter(profile__role=UserRole.CANDIDATE).select_related('profile').prefetch_related('applications__vacancy')
+
+    # Add statistics to each candidate
+    candidate_data = []
+    for candidate in candidates:
+        total_applications = candidate.applications.count()
+        pending_applications = candidate.applications.filter(status__in=['NEW', 'REVIEWING', 'INTERVIEW_SCHEDULED']).count()
+        accepted_applications = candidate.applications.filter(status='ACCEPTED').count()
+
+        candidate_data.append({
+            'candidate': candidate,
+            'total_applications': total_applications,
+            'pending_applications': pending_applications,
+            'accepted_applications': accepted_applications,
+            'latest_application': candidate.applications.order_by('-applied_at').first()
+        })
+
+    # Apply filters
+    search = request.GET.get('search', '')
+    status_filter = request.GET.get('status', '')
+
+    if search:
+        candidate_data = [
+            cd for cd in candidate_data 
+            if search.lower() in f"{cd['candidate'].first_name} {cd['candidate'].last_name}".lower() or 
+               search.lower() in cd['candidate'].email.lower()
+        ]
+
+    if status_filter:
+        if status_filter == 'active':
+            candidate_data = [cd for cd in candidate_data if cd['pending_applications'] > 0]
+        elif status_filter == 'hired':
+            candidate_data = [cd for cd in candidate_data if cd['accepted_applications'] > 0]
+        elif status_filter == 'new':
+            candidate_data = [cd for cd in candidate_data if cd['total_applications'] == 0]
+
+    # Pagination
+    from django.core.paginator import Paginator
+    paginator = Paginator(candidate_data, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        'page_obj': page_obj,
+        'search': search,
+        'status_filter': status_filter,
+        'total_candidates': len(candidates),
+    }
+    return render(request, 'hr/manage_candidates.html', context)
+
+@login_required
+@hr_required
+def create_candidate(request):
+    if request.method == 'POST':
+        form = HRCandidateCreationForm(request.POST)
+        if form.is_valid():
+            # Create user
+            user = User.objects.create_user(
+                username=form.cleaned_data['email'],  # Use email as username
+                email=form.cleaned_data['email'],
+                first_name=form.cleaned_data['first_name'],
+                last_name=form.cleaned_data['last_name'],
+                password=form.cleaned_data['password']
+            )
+
+            # Create user profile
+            profile = UserProfile.objects.create(
+                user=user,
+                role=UserRole.CANDIDATE,
+                phone=form.cleaned_data['phone'],
+                city=form.cleaned_data.get('city', ''),
+                about=form.cleaned_data.get('about', ''),
+                desired_position=form.cleaned_data.get('desired_position', ''),
+                experience=form.cleaned_data.get('experience', ''),
+                education=form.cleaned_data.get('education', '')
+            )
+
+            messages.success(request, f'Кандидат {user.get_full_name()} успешно создан')
+            return redirect('manage_candidates')
+    else:
+        form = HRCandidateCreationForm()
+
+    context = {
+        'form': form,
+    }
+    return render(request, 'hr/create_candidate.html', context)
+
+@login_required
+@hr_required
+def apply_candidate_to_vacancy(request):
+    if request.method == 'POST':
+        form = ApplyCandidateForm(request.POST)
+        if form.is_valid():
+            candidate = form.cleaned_data['candidate']
+            vacancy = form.cleaned_data['vacancy']
+            cover_letter = form.cleaned_data.get('cover_letter', '')
+
+            # Check if candidate already applied for this vacancy
+            if Application.objects.filter(user=candidate, vacancy=vacancy).exists():
+                messages.warning(request, f'{candidate.get_full_name()} уже подавал заявку на эту вакансию')
+                return redirect('apply_candidate')
+
+            # Create application
+            application = Application.objects.create(
+                user=candidate,
+                vacancy=vacancy,
+                cover_letter=f"[Заявка создана HR менеджером {request.user.get_full_name()}]\n\n{cover_letter}" if cover_letter else f"[Заявка создана HR менеджером {request.user.get_full_name()}]",
+                status=ApplicationStatus.NEW
+            )
+
+            # Create notification for candidate
+            Notification.objects.create(
+                user=candidate,
+                title=f'Вы были добавлены на вакансию: {vacancy.title}',
+                message=f'HR менеджер {request.user.get_full_name()} подал заявку от вашего имени на вакансию "{vacancy.title}". Вы можете отслеживать статус в личном кабинете.'
+            )
+
+            messages.success(request, f'Заявка от {candidate.get_full_name()} на вакансию "{vacancy.title}" успешно создана')
+            return redirect('application_detail', application_id=application.id)
+    else:
+        form = ApplyCandidateForm()
+
+    context = {
+        'form': form,
+    }
+    return render(request, 'hr/apply_candidate.html', context)

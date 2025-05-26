@@ -1,4 +1,3 @@
-
 {% extends 'base.html' %}
 
 {% block title %}Мои тесты - PizzaJobs{% endblock %}
@@ -33,7 +32,7 @@
                         <div class="card-body">
                             <h6 class="card-subtitle mb-2 text-muted">{{ data.test.title }}</h6>
                             <p class="card-text">{{ data.test.description|truncatewords:20 }}</p>
-                            
+
                             <div class="mb-3">
                                 <small class="text-muted">
                                     <i class="fas fa-clock me-1"></i>Время: {{ data.test.time_limit }} мин
@@ -70,23 +69,21 @@
                                 </div>
                             {% endif %}
 
-                            {% if data.related_vacancies.exists %}
-                                <div class="mb-3">
-                                    <small class="text-muted">
-                                        <strong>Связанные вакансии:</strong>
-                                    </small>
-                                    {% for vacancy in data.related_vacancies|slice:":2" %}
-                                        <div class="mt-1">
-                                            <a href="{% url 'vacancy_detail' vacancy.id %}" class="text-decoration-none small">
-                                                <i class="fas fa-briefcase me-1"></i>{{ vacancy.title }}
-                                            </a>
-                                        </div>
-                                    {% endfor %}
-                                    {% if data.related_vacancies.count > 2 %}
-                                        <small class="text-muted">и ещё {{ data.related_vacancies.count|add:"-2" }} вакансий...</small>
-                                    {% endif %}
-                                </div>
-                            {% endif %}
+                            <div class="mb-3">
+                                <small class="text-muted">
+                                    <strong>Ваши заявки на позицию:</strong>
+                                </small>
+                                {% for vacancy in data.related_vacancies|slice:":2" %}
+                                    <div class="mt-1">
+                                        <a href="{% url 'vacancy_detail' vacancy.id %}" class="text-decoration-none small">
+                                            <i class="fas fa-briefcase me-1"></i>{{ vacancy.title }}
+                                        </a>
+                                    </div>
+                                {% endfor %}
+                                {% if data.related_vacancies|length > 2 %}
+                                    <small class="text-muted">и ещё {{ data.related_vacancies|length|add:"-2" }} заявок...</small>
+                                {% endif %}
+                            </div>
                         </div>
                         <div class="card-footer bg-transparent">
                             {% if data.can_retake %}
@@ -99,14 +96,14 @@
                                     <i class="fas fa-check me-1"></i>Тест пройден
                                 </button>
                             {% endif %}
-                            
+
                             {% if data.all_attempts.count > 1 %}
                                 <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#attempts-{{ data.test.id }}">
                                     <i class="fas fa-history me-1"></i>История попыток
                                 </button>
                             {% endif %}
                         </div>
-                        
+
                         {% if data.all_attempts.count > 1 %}
                             <div class="collapse" id="attempts-{{ data.test.id }}">
                                 <div class="card-body border-top">

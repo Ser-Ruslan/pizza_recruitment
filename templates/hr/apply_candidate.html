@@ -1,0 +1,89 @@
+
+{% extends 'base.html' %}
+
+{% block title %}Подать заявку от кандидата - PizzaJobs{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header bg-white">
+                    <h2 class="h4 mb-0">Подать заявку от имени кандидата</h2>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Заявка будет подана от имени выбранного кандидата. Кандидат получит уведомление о созданной заявке.
+                    </div>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="mb-4">
+                            <label for="{{ form.candidate.id_for_label }}" class="form-label">{{ form.candidate.label }}</label>
+                            {{ form.candidate }}
+                            {% if form.candidate.errors %}
+                                <div class="text-danger small">{{ form.candidate.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="{{ form.vacancy.id_for_label }}" class="form-label">{{ form.vacancy.label }}</label>
+                            {{ form.vacancy }}
+                            {% if form.vacancy.errors %}
+                                <div class="text-danger small">{{ form.vacancy.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="{{ form.cover_letter.id_for_label }}" class="form-label">{{ form.cover_letter.label }}</label>
+                            {{ form.cover_letter }}
+                            {% if form.cover_letter.help_text %}
+                                <div class="small text-muted">{{ form.cover_letter.help_text }}</div>
+                            {% endif %}
+                            {% if form.cover_letter.errors %}
+                                <div class="text-danger small">{{ form.cover_letter.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'manage_candidates' %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Назад к кандидатам
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-paper-plane me-2"></i>Подать заявку
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.form-control, .form-select {
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 8px 12px;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #dc3545;
+    box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Pre-select candidate if passed in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const candidateId = urlParams.get('candidate');
+    if (candidateId) {
+        const candidateSelect = document.getElementById('{{ form.candidate.id_for_label }}');
+        candidateSelect.value = candidateId;
+    }
+});
+</script>
+{% endblock %}

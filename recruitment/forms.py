@@ -12,6 +12,12 @@ from .models import (
 
 # Quick Application form
 class QuickApplicationForm(forms.ModelForm):
+    privacy_consent = forms.BooleanField(
+        required=True,
+        label=_('Я согласен на обработку персональных данных'),
+        help_text=_('Для отправки заявки необходимо согласие на обработку персональных данных')
+    )
+    
     class Meta:
         model = QuickApplication
         fields = ['full_name', 'email', 'phone', 'resume', 'cover_letter']
@@ -83,6 +89,85 @@ class UserRegisterForm(UserCreationForm):
             user.save()
             
         return user
+
+# HR Candidate Creation Form
+class HRCandidateCreationForm(forms.ModelForm):
+    email = forms.EmailField(label=_('Email'), required=True)
+    first_name = forms.CharField(label=_('Имя'), required=True)
+    last_name = forms.CharField(label=_('Фамилия'), required=True)
+    phone = forms.CharField(label=_('Телефон'), required=True)
+    password = forms.CharField(
+        label=_('Временный пароль'),
+        widget=forms.PasswordInput(),
+        required=True,
+        help_text=_('Кандидат сможет изменить пароль после входа в систему')
+    )
+    
+    # Additional candidate fields
+    city = forms.CharField(label=_('Город'), required=False)
+    about = forms.CharField(
+        label=_('О кандидате'),
+        widget=forms.Textarea(attrs={'rows': 3}),
+        required=False
+    )
+    desired_position = forms.CharField(label=_('Желаемая должность'), required=False)
+    experience = forms.CharField(
+        label=_('Опыт работы'),
+        widget=forms.Textarea(attrs={'rows': 3}),
+        required=False
+    )
+    education = forms.CharField(
+        label=_('Образование'),
+        widget=forms.Textarea(attrs={'rows': 3}),
+        required=False
+    )
+    
+    class Meta:
+        model = User
+        fields = ['first_name', 'last_name', 'email']
+        
+    def clean_email(self):
+        email = self.cleaned_data.get('email')
+        if User.objects.filter(email=email).exists():
+            raise forms.ValidationError('Пользователь с таким email уже существует')
+        return email
+    
+    def clean_phone(self):
+        phone = self.cleaned_data.get('phone')
+        if UserProfile.objects.filter(phone=phone).exists():
+            raise forms.ValidationError('Пользователь с таким номером телефона уже существует')
+        return phone
+
+# Apply Candidate to Vacancy Form
+class ApplyCandidateForm(forms.Form):
+    candidate = forms.ModelChoiceField(
+        queryset=None,
+        label=_('Кандидат'),
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+    vacancy = forms.ModelChoiceField(
+        queryset=None,
+        label=_('Вакансия'),
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+    cover_letter = forms.CharField(
+        label=_('Комментарий HR'),
+        widget=forms.Textarea(attrs={'rows': 3}),
+        required=False,
+        help_text=_('Комментарий будет добавлен от имени HR к заявке')
+    )
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Only show candidates (users with CANDIDATE role)
+        self.fields['candidate'].queryset = User.objects.filter(
+            profile__role=UserRole.CANDIDATE
+        ).order_by('first_name', 'last_name')
+        
+        # Only show active vacancies
+        self.fields['vacancy'].queryset = Vacancy.objects.filter(
+            is_active=True
+        ).order_by('-created_at')
 
 # User profile form
 class UserProfileForm(forms.ModelForm):
@@ -172,6 +257,12 @@ class VacancyForm(forms.ModelForm):
 
 # Application form
 class ApplicationForm(forms.ModelForm):
+    privacy_consent = forms.BooleanField(
+        required=True,
+        label=_('Я согласен на обработку персональных данных'),
+        help_text=_('Для отправки заявки необходимо согласие на обработку персональных данных')
+    )
+    
     class Meta:
         model = Application
         fields = ['resume', 'cover_letter']

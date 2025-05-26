@@ -45,6 +45,11 @@
                                 <a class="nav-link" href="{% url 'manage_vacancies' %}">Управление вакансиями</a>
                             </li>
                             <li class="nav-item">
+                                <a class="nav-link" href="{% url 'manage_candidates' %}">
+                                    <i class="fas fa-users me-2"></i>Управление кандидатами
+                                </a>
+                            </li>
+                            <li class="nav-item">
                                 <a class="nav-link" href="{% url 'manage_tests' %}">
                                     <i class="fas fa-tasks me-2"></i>Управление тестами
                                 </a>
@@ -56,12 +61,20 @@
                             <li class="nav-item">
                                 <a class="nav-link" href="{% url 'manager_dashboard' %}">Панель менеджера</a>
                             </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{% url 'application_list' %}">Отклики</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{% url 'create_vacancy_manager' %}">
+                                    <i class="fas fa-plus-circle me-2"></i>Создать вакансию
+                                </a>
+                            </li>
                         {% endif %}
 
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'application_list' %}">Заявки</a>
                         </li>
-                        
+
                         {% if user.profile.role == 'CANDIDATE' %}
                             <li class="nav-item">
                                 <a class="nav-link position-relative" href="{% url 'candidate_tests' %}">

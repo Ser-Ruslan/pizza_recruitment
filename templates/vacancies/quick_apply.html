@@ -25,25 +25,63 @@
                         {% csrf_token %}
                         
                         {% for field in form %}
-                            <div class="mb-3">
-                                <label for="{{ field.id_for_label }}" class="form-label">
-                                    {{ field.label }}
-                                </label>
-                                {% load widget_tweaks %}
-                                {{ field|add_class:"form-control" }}
-                                {% if field.help_text %}
-                                    <small class="text-muted">{{ field.help_text }}</small>
-                                {% endif %}
-                                {% if field.errors %}
-                                    <div class="alert alert-danger">
-                                        {{ field.errors }}
+                            {% if field.name == 'privacy_consent' %}
+                                <div class="mb-4">
+                                    <div class="card border-warning">
+                                        <div class="card-body">
+                                            <h6 class="card-title">
+                                                <i class="fas fa-shield-alt me-2 text-warning"></i>Согласие на обработку персональных данных
+                                            </h6>
+                                            <div class="mb-3">
+                                                <p class="small text-muted mb-2">
+                                                    Пожалуйста, ознакомьтесь с нашей 
+                                                    <a href="{% url 'privacy_policy' %}" target="_blank" id="privacy-link">
+                                                        политикой конфиденциальности
+                                                        <i class="fas fa-external-link-alt ms-1"></i>
+                                                    </a>
+                                                    перед отправкой заявки.
+                                                </p>
+                                                <div class="form-check">
+                                                    {{ field }}
+                                                    <label class="form-check-label" for="{{ field.id_for_label }}">
+                                                        {{ field.label }}
+                                                    </label>
+                                                </div>
+                                                {% if field.help_text %}
+                                                    <div class="small text-muted mt-1">{{ field.help_text }}</div>
+                                                {% endif %}
+                                                {% if field.errors %}
+                                                    <div class="text-danger small mt-1">{{ field.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
                                     </div>
-                                {% endif %}
-                            </div>
+                                </div>
+                            {% else %}
+                                <div class="mb-3">
+                                    <label for="{{ field.id_for_label }}" class="form-label">
+                                        {{ field.label }}
+                                    </label>
+                                    {% load widget_tweaks %}
+                                    {% if field.name == 'cover_letter' %}
+                                        {{ field|add_class:"form-control" }}
+                                    {% else %}
+                                        {{ field|add_class:"form-control" }}
+                                    {% endif %}
+                                    {% if field.help_text %}
+                                        <small class="text-muted">{{ field.help_text }}</small>
+                                    {% endif %}
+                                    {% if field.errors %}
+                                        <div class="alert alert-danger">
+                                            {{ field.errors }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            {% endif %}
                         {% endfor %}
                         
                         <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-danger">
+                            <button type="submit" class="btn btn-danger" id="submit-btn" disabled>
                                 <i class="fas fa-paper-plane me-2"></i>Отправить отклик
                             </button>
                             <a href="{% url 'vacancy_detail' vacancy.id %}" class="btn btn-outline-secondary">
@@ -56,4 +94,44 @@
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const privacyLink = document.getElementById('privacy-link');
+    const privacyConsent = document.getElementById('{{ form.privacy_consent.id_for_label }}');
+    const submitBtn = document.getElementById('submit-btn');
+    let privacyPolicyRead = false;
+    
+    // Disable consent checkbox initially
+    privacyConsent.disabled = true;
+    
+    // Track if privacy policy link was clicked
+    privacyLink.addEventListener('click', function() {
+        privacyPolicyRead = true;
+        privacyConsent.disabled = false;
+        updateSubmitButton();
+    });
+    
+    // Update submit button state
+    function updateSubmitButton() {
+        if (privacyConsent.checked && privacyPolicyRead) {
+            submitBtn.disabled = false;
+        } else {
+            submitBtn.disabled = true;
+        }
+    }
+    
+    // Listen for consent checkbox changes
+    privacyConsent.addEventListener('change', updateSubmitButton);
+    
+    // Show tooltip if user tries to check consent before reading policy
+    privacyConsent.addEventListener('click', function(e) {
+        if (!privacyPolicyRead) {
+            e.preventDefault();
+            alert('Пожалуйста, сначала ознакомьтесь с политикой конфиденциальности');
+        }
+    });
+});
+</script>
+
 {% endblock %}

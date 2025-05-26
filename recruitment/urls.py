@@ -53,6 +53,7 @@ path('vacancies/<int:vacancy_id>/quick-apply/', views.quick_apply, name='quick_a
 
     # Restaurant manager dashboard routes
     path('manager/dashboard/', views.manager_dashboard, name='manager_dashboard'),
+    path('manager/vacancies/create/', views.create_vacancy_manager, name='create_vacancy_manager'),
 
     # Notification routes
     path('notifications/', views.notifications, name='notifications'),
@@ -63,6 +64,7 @@ path('vacancies/<int:vacancy_id>/quick-apply/', views.quick_apply, name='quick_a
 
     # Test management URLs
     path('hr/tests/', views.manage_tests, name='manage_tests'),
+    path('hr/tests/select-position/', views.select_position_for_test, name='select_position_for_test'),
     path('hr/position-types/<int:position_type_id>/create-test/', views.create_test, name='create_test'),
     path('hr/tests/create-all/', views.create_tests_for_all_vacancies, name='create_tests_for_all_vacancies'),
     path('hr/tests/<int:test_id>/edit/', views.edit_test, name='edit_test'),
@@ -72,4 +74,12 @@ path('vacancies/<int:vacancy_id>/quick-apply/', views.quick_apply, name='quick_a
     path('test/<int:test_id>/take/', views.take_test, name='take_test'),
     path('test/token/<str:token>/', views.take_test_by_token, name='take_test_by_token'),
     path('candidate/tests/', views.candidate_tests, name='candidate_tests'),
+
+    # Legal URLs
+    path('privacy-policy/', views.privacy_policy, name='privacy_policy'),
+
+    # Candidate Management URLs
+    path('hr/candidates/', views.manage_candidates, name='manage_candidates'),
+    path('hr/candidates/create/', views.create_candidate, name='create_candidate'),
+    path('hr/candidates/apply/', views.apply_candidate_to_vacancy, name='apply_candidate'),
 ]

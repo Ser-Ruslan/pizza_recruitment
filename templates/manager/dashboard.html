@@ -152,8 +152,11 @@
     
     <!-- Быстрые действия -->
     <div class="card shadow mb-4">
-        <div class="card-header bg-white">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
             <h3 class="card-title h5 mb-0">Быстрые действия</h3>
+            <a href="{% url 'create_vacancy_manager' %}" class="btn btn-danger">
+                <i class="fas fa-plus-circle me-2"></i>Создать вакансию
+            </a>
         </div>
         <div class="card-body">
             <div class="row">

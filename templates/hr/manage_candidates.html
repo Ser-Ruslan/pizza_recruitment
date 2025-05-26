@@ -1,0 +1,222 @@
+
+{% extends 'base.html' %}
+
+{% block title %}Управление кандидатами - PizzaJobs{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Управление кандидатами</h1>
+        <div>
+            <a href="{% url 'create_candidate' %}" class="btn btn-success me-2">
+                <i class="fas fa-user-plus me-2"></i>Создать кандидата
+            </a>
+            <a href="{% url 'apply_candidate' %}" class="btn btn-primary me-2">
+                <i class="fas fa-paper-plane me-2"></i>Подать заявку
+            </a>
+            <a href="{% url 'hr_dashboard' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Назад
+            </a>
+        </div>
+    </div>
+
+    <!-- Статистика -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h4>{{ total_candidates }}</h4>
+                    <p class="mb-0">Всего кандидатов</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <h4>{{ page_obj.object_list|length }}</h4>
+                    <p class="mb-0">Отображено</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Фильтры -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Поиск</label>
+                    <input type="text" name="search" class="form-control" value="{{ search }}" placeholder="Имя, фамилия, email...">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Статус</label>
+                    <select name="status" class="form-select">
+                        <option value="">Все кандидаты</option>
+                        <option value="new" {% if status_filter == 'new' %}selected{% endif %}>Новые</option>
+                        <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Активные заявки</option>
+                        <option value="hired" {% if status_filter == 'hired' %}selected{% endif %}>Трудоустроенные</option>
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary me-2">
+                        <i class="fas fa-search me-1"></i>Найти
+                    </button>
+                    <a href="{% url 'manage_candidates' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-times me-1"></i>Сбросить
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Список кандидатов -->
+    <div class="card shadow">
+        <div class="card-body">
+            {% if page_obj %}
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>Кандидат</th>
+                                <th>Контакты</th>
+                                <th>Заявки</th>
+                                <th>Последняя активность</th>
+                                <th>Статус</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for candidate_data in page_obj %}
+                                {% with candidate=candidate_data.candidate %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            {% if candidate.profile.photo %}
+                                                <img src="{{ candidate.profile.photo.url }}" class="rounded-circle me-3" style="width: 40px; height: 40px; object-fit: cover;">
+                                            {% else %}
+                                                <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                                                    <i class="fas fa-user text-white"></i>
+                                                </div>
+                                            {% endif %}
+                                            <div>
+                                                <h6 class="mb-0">{{ candidate.get_full_name }}</h6>
+                                                <small class="text-muted">{{ candidate.profile.desired_position|default:"Должность не указана" }}</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div>
+                                            <small class="d-block">{{ candidate.email }}</small>
+                                            <small class="text-muted">{{ candidate.profile.phone|default:"Телефон не указан" }}</small>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div>
+                                            <span class="badge bg-primary">{{ candidate_data.total_applications }} всего</span>
+                                            {% if candidate_data.pending_applications > 0 %}
+                                                <span class="badge bg-warning">{{ candidate_data.pending_applications }} активных</span>
+                                            {% endif %}
+                                            {% if candidate_data.accepted_applications > 0 %}
+                                                <span class="badge bg-success">{{ candidate_data.accepted_applications }} принято</span>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        {% if candidate_data.latest_application %}
+                                            <div>
+                                                <small class="d-block">{{ candidate_data.latest_application.vacancy.title }}</small>
+                                                <small class="text-muted">{{ candidate_data.latest_application.applied_at|date:"d.m.Y" }}</small>
+                                            </div>
+                                        {% else %}
+                                            <small class="text-muted">Нет заявок</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if candidate_data.accepted_applications > 0 %}
+                                            <span class="badge bg-success">Трудоустроен</span>
+                                        {% elif candidate_data.pending_applications > 0 %}
+                                            <span class="badge bg-warning">Активный</span>
+                                        {% elif candidate_data.total_applications > 0 %}
+                                            <span class="badge bg-secondary">Неактивный</span>
+                                        {% else %}
+                                            <span class="badge bg-light text-dark">Новый</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="dropdown">
+                                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                                Действия
+                                            </button>
+                                            <ul class="dropdown-menu">
+                                                <li><a class="dropdown-item" href="{% url 'view_profile' %}">
+                                                    <i class="fas fa-user me-2"></i>Просмотр профиля
+                                                </a></li>
+                                                <li><a class="dropdown-item" href="{% url 'apply_candidate' %}?candidate={{ candidate.id }}">
+                                                    <i class="fas fa-paper-plane me-2"></i>Подать заявку
+                                                </a></li>
+                                                {% if candidate.applications.exists %}
+                                                    <li><hr class="dropdown-divider"></li>
+                                                    <li><h6 class="dropdown-header">Заявки кандидата:</h6></li>
+                                                    {% for app in candidate.applications.all|slice:":3" %}
+                                                        <li><a class="dropdown-item small" href="{% url 'application_detail' app.id %}">
+                                                            {{ app.vacancy.title|truncatechars:30 }}
+                                                        </a></li>
+                                                    {% endfor %}
+                                                    {% if candidate.applications.count > 3 %}
+                                                        <li><a class="dropdown-item small text-muted" href="{% url 'application_list' %}?user={{ candidate.id }}">
+                                                            И еще {{ candidate.applications.count|add:"-3" }}...
+                                                        </a></li>
+                                                    {% endif %}
+                                                {% endif %}
+                                            </ul>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endwith %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Пагинация -->
+                {% if page_obj.has_other_pages %}
+                    <nav aria-label="Навигация по страницам">
+                        <ul class="pagination justify-content-center">
+                            {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=1{% if search %}&search={{ search }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">Первая</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search %}&search={{ search }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">Назад</a>
+                                </li>
+                            {% endif %}
+
+                            <li class="page-item active">
+                                <span class="page-link">{{ page_obj.number }} из {{ page_obj.paginator.num_pages }}</span>
+                            </li>
+
+                            {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search %}&search={{ search }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">Далее</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search %}&search={{ search }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">Последняя</a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                {% endif %}
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                    <h5>Кандидаты не найдены</h5>
+                    <p class="text-muted">Попробуйте изменить параметры поиска или создайте нового кандидата</p>
+                    <a href="{% url 'create_candidate' %}" class="btn btn-success">
+                        <i class="fas fa-user-plus me-2"></i>Создать кандидата
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

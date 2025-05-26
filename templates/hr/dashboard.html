@@ -21,8 +21,11 @@
             <a href="{% url 'create_vacancy' %}" class="btn btn-danger me-2">
                 <i class="fas fa-plus-circle me-2"></i>Создать вакансию
             </a>
-            <a href="{% url 'quick_applications' %}" class="btn btn-warning">
+            <a href="{% url 'quick_applications' %}" class="btn btn-warning me-2">
                 <i class="fas fa-bolt me-2"></i>Быстрые заявки
+            </a>
+            <a href="{% url 'manage_candidates' %}" class="btn btn-success">
+                <i class="fas fa-users me-2"></i>Кандидаты
             </a>
         </div>
     </div>
@@ -266,7 +269,7 @@
                 </div>
             </div>
         </div>
-        
+
         <div class="col-lg-4">
             <div class="card shadow">
                 <div class="card-header bg-white">
@@ -489,3 +492,28 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 {% endblock %}
+<div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-chart-bar fa-3x text-info mb-3"></i>
+                            <h5 class="card-title">Статистика тестов</h5>
+                            <p class="card-text">Анализ результатов тестирования кандидатов</p>
+                            <a href="{% url 'hr_test_statistics' %}" class="btn btn-info">
+                                <i class="fas fa-chart-line me-2"></i>Открыть
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-users fa-3x text-success mb-3"></i>
+                            <h5 class="card-title">Управление кандидатами</h5>
+                            <p class="card-text">База кандидатов и управление заявками</p>
+                            <a href="{% url 'manage_candidates' %}" class="btn btn-success">
+                                <i class="fas fa-users me-2"></i>Открыть
+                            </a>
+                        </div>
+                    </div>
+                </div>

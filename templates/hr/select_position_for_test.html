@@ -1,0 +1,45 @@
+
+{% extends 'base.html' %}
+
+{% block title %}Выбор позиции для создания теста - PizzaJobs{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Выберите тип позиции для создания теста</h1>
+        <a href="{% url 'manage_tests' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-2"></i>Назад
+        </a>
+    </div>
+
+    {% if position_types %}
+        <div class="row">
+            {% for position_type in position_types %}
+                <div class="col-md-6 col-lg-4 mb-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ position_type.title }}</h5>
+                            <p class="card-text">{{ position_type.description|truncatewords:15 }}</p>
+                            <a href="{% url 'create_test' position_type.id %}" class="btn btn-primary">
+                                <i class="fas fa-plus me-2"></i>Создать тест
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="alert alert-info">
+            <h4>Все типы позиций уже имеют тесты</h4>
+            <p>Для всех доступных типов позиций уже созданы тесты. Вы можете:</p>
+            <ul>
+                <li>Редактировать существующие тесты на странице управления тестами</li>
+                <li>Создать новый тип позиции, если необходимо</li>
+            </ul>
+            <a href="{% url 'manage_tests' %}" class="btn btn-primary">
+                <i class="fas fa-arrow-left me-2"></i>Вернуться к управлению тестами
+            </a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
