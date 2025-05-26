@@ -1,4 +1,3 @@
-
 {% extends 'base.html' %}
 
 {% block title %}Статистика тестирования - PizzaJobs{% endblock %}
@@ -242,24 +241,24 @@ document.addEventListener('DOMContentLoaded', function() {
         {% for data in statistics.tests_data %}
         {
             "test": {
-                "position_type": {"title": "{{ data.test.position_type.title }}"},
-                "title": "{{ data.test.title }}",
-                "questions": {"count": {{ data.test.questions.count }}}
+                "position_type": {"title": "{{ data.test.position_type.title|default:'Без типа'|escapejs }}"},
+                "title": "{{ data.test.title|default:'Без названия'|escapejs }}",
+                "questions": {"count": {{ data.test.questions.count|default:0 }}}
             },
-            "total_attempts": {{ data.total_attempts }},
-            "passed_attempts": {{ data.passed_attempts }},
-            "success_rate": {{ data.success_rate|floatformat:2 }},
-            "avg_score": {{ data.avg_score|floatformat:2 }}
+            "total_attempts": {{ data.total_attempts|default:0 }},
+            "passed_attempts": {{ data.passed_attempts|default:0 }},
+            "success_rate": parseFloat("{{ data.success_rate|default:0|floatformat:2 }}"),
+            "avg_score": parseFloat("{{ data.avg_score|default:0|floatformat:2 }}")
         }{% if not forloop.last %},{% endif %}
         {% endfor %}
     ];
-    
+
     // Подготовка данных для диаграммы успешности
     const testLabels = [];
     const successRates = [];
     const totalAttempts = [];
     const avgScores = [];
-    
+
     testsData.forEach(function(test) {
         testLabels.push(test.test.position_type.title);
         successRates.push(test.success_rate);
@@ -267,184 +266,233 @@ document.addEventListener('DOMContentLoaded', function() {
         avgScores.push(test.avg_score);
     });
 
-    // Диаграмма успешности по тестам
     const testsSuccessCtx = document.getElementById('testsSuccessChart').getContext('2d');
-    new Chart(testsSuccessCtx, {
-        type: 'doughnut',
-        data: {
-            labels: testLabels,
-            datasets: [{
-                data: successRates,
-                backgroundColor: [
-                    'rgba(54, 162, 235, 0.8)',
-                    'rgba(255, 99, 132, 0.8)',
-                    'rgba(255, 205, 86, 0.8)',
-                    'rgba(75, 192, 192, 0.8)',
-                    'rgba(153, 102, 255, 0.8)',
-                    'rgba(255, 159, 64, 0.8)'
-                ],
-                borderColor: [
-                    'rgba(54, 162, 235, 1)',
-                    'rgba(255, 99, 132, 1)',
-                    'rgba(255, 205, 86, 1)',
-                    'rgba(75, 192, 192, 1)',
-                    'rgba(153, 102, 255, 1)',
-                    'rgba(255, 159, 64, 1)'
-                ],
-                borderWidth: 2
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: {
-                        padding: 20,
-                        usePointStyle: true
-                    }
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            return context.label + ': ' + context.parsed.toFixed(1) + '%';
+    if (testsData.length > 0) {
+        new Chart(testsSuccessCtx, {
+            type: 'doughnut',
+            data: {
+                labels: testLabels,
+                datasets: [{
+                    data: successRates,
+                    backgroundColor: [
+                        'rgba(54, 162, 235, 0.8)',
+                        'rgba(255, 99, 132, 0.8)',
+                        'rgba(255, 205, 86, 0.8)',
+                        'rgba(75, 192, 192, 0.8)',
+                        'rgba(153, 102, 255, 0.8)',
+                        'rgba(255, 159, 64, 0.8)'
+                    ],
+                    borderColor: [
+                        'rgba(54, 162, 235, 1)',
+                        'rgba(255, 99, 132, 1)',
+                        'rgba(255, 205, 86, 1)',
+                        'rgba(75, 192, 192, 1)',
+                        'rgba(153, 102, 255, 1)',
+                        'rgba(255, 159, 64, 1)'
+                    ],
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 20,
+                            usePointStyle: true
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.label + ': ' + context.parsed.toFixed(1) + '%';
+                            }
                         }
                     }
                 }
             }
-        }
-    });
+        });
+    } else {
+        testsSuccessCtx.canvas.parentNode.innerHTML = '<div class="alert alert-info">Нет данных для отображения</div>';
+    }
+
 
     // Диаграмма средних баллов
     const avgScoresCtx = document.getElementById('avgScoresChart').getContext('2d');
-    new Chart(avgScoresCtx, {
-        type: 'bar',
-        data: {
-            labels: testLabels,
-            datasets: [{
-                label: 'Средний балл',
-                data: avgScores,
-                backgroundColor: 'rgba(75, 192, 192, 0.6)',
-                borderColor: 'rgba(75, 192, 192, 1)',
-                borderWidth: 2
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    max: 100,
-                    ticks: {
-                        callback: function(value) {
-                            return value + '%';
+    if (testsData.length > 0) {
+        new Chart(avgScoresCtx, {
+            type: 'bar',
+            data: {
+                labels: testLabels,
+                datasets: [{
+                    label: 'Средний балл',
+                    data: avgScores,
+                    backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: {
+                            callback: function(value) {
+                                return value + '%';
+                            }
                         }
                     }
-                }
-            },
-            plugins: {
-                legend: {
-                    display: false
                 },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            return 'Средний балл: ' + context.parsed.y.toFixed(1) + '%';
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return 'Средний балл: ' + context.parsed.y.toFixed(1) + '%';
+                            }
                         }
                     }
                 }
             }
-        }
-    });
+        });
+    } else {
+        avgScoresCtx.canvas.parentNode.innerHTML = '<div class="alert alert-info">Нет данных для отображения</div>';
+    }
 
     // Данные для анализа сложности вопросов из сервера
     const questionAnalytics = [
         {% for item in statistics.question_analytics %}
         {
-            "test_title": "{{ item.test_title }}",
+            "test_title": "{{ item.test_title|escapejs }}",
             "question_text": "{{ item.question_text|escapejs }}",
-            "error_rate": {{ item.error_rate|floatformat:2 }},
-            "total_answers": {{ item.total_answers }}
+            "error_rate": parseFloat("{{ item.error_rate|floatformat:2 }}"),
+            "total_answers": parseInt("{{ item.total_answers }}")
         }{% if not forloop.last %},{% endif %}
         {% endfor %}
     ];
     const questionLabels = [];
     const errorRates = [];
-    
-    // Берем топ-20 самых сложных вопросов для читаемости диаграммы
-    const topQuestions = questionAnalytics.slice(0, 20);
-    topQuestions.forEach(function(item) {
-        questionLabels.push(`${item.test_title}: ${item.question_text}`);
-        errorRates.push(item.error_rate);
-    });
 
-    // Диаграмма сложности вопросов
-    const questionDifficultyCtx = document.getElementById('questionDifficultyChart').getContext('2d');
-    new Chart(questionDifficultyCtx, {
-        type: 'bar',
-        data: {
-            labels: questionLabels,
-            datasets: [{
-                label: 'Процент неправильных ответов',
-                data: errorRates,
-                backgroundColor: function(context) {
-                    const value = context.parsed.y;
-                    if (value > 50) return 'rgba(255, 99, 132, 0.6)'; // Красный - очень сложный
-                    if (value > 30) return 'rgba(255, 205, 86, 0.6)'; // Желтый - средней сложности
-                    return 'rgba(75, 192, 192, 0.6)'; // Зеленый - легкий
-                },
-                borderColor: function(context) {
-                    const value = context.parsed.y;
-                    if (value > 50) return 'rgba(255, 99, 132, 1)';
-                    if (value > 30) return 'rgba(255, 205, 86, 1)';
-                    return 'rgba(75, 192, 192, 1)';
-                },
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    max: 100,
-                    ticks: {
-                        callback: function(value) {
-                            return value + '%';
+    // Берем топ-12 самых сложных вопросов для читаемости диаграммы
+    const topQuestions = questionAnalytics.slice(0, 12);
+
+    if(questionAnalytics.length > 0){
+        topQuestions.forEach(function(item) {
+            // Не обрезаем текст для меток диаграммы
+            questionLabels.push(item.test_title + ': ' + item.question_text);
+            errorRates.push(item.error_rate);
+        });
+
+        // Диаграмма сложности вопросов
+        const questionDifficultyCtx = document.getElementById('questionDifficultyChart').getContext('2d');
+        new Chart(questionDifficultyCtx, {
+            type: 'bar',
+            data: {
+                labels: questionLabels,
+                datasets: [{
+                    label: 'Процент неправильных ответов',
+                    data: errorRates,
+                    backgroundColor: function(context) {
+                        const value = context.parsed.y;
+                        if (value > 50) return 'rgba(255, 99, 132, 0.6)'; // Красный - очень сложный
+                        if (value > 30) return 'rgba(255, 205, 86, 0.6)'; // Желтый - средней сложности
+                        return 'rgba(75, 192, 192, 0.6)'; // Зеленый - легкий
+                    },
+                    borderColor: function(context) {
+                        const value = context.parsed.y;
+                        if (value > 50) return 'rgba(255, 99, 132, 1)';
+                        if (value > 30) return 'rgba(255, 205, 86, 1)';
+                        return 'rgba(75, 192, 192, 1)';
+                    },
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: {
+                            callback: function(value) {
+                                return value + '%';
+                            },
+                            font: {
+                                size: 14
+                            }
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            maxRotation: 45,
+                            minRotation: 45,
+                            font: {
+                                size: 12,
+                                weight: 'normal'
+                            },
+                            maxTicksLimit: 12,
+                            color: '#495057',
+                            callback: function(value, index) {
+                                // Возвращаем полный текст без обрезки
+                                return this.getLabelForValue(value);
+                            }
                         }
                     }
                 },
-                x: {
-                    ticks: {
-                        maxRotation: 45,
-                        minRotation: 45
-                    }
-                }
-            },
-            plugins: {
-                legend: {
-                    display: false
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            return 'Ошибок: ' + context.parsed.y.toFixed(1) + '%';
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        titleFont: {
+                            size: 16
+                        },
+                        bodyFont: {
+                            size: 15
+                        },
+                        footerFont: {
+                            size: 14
+                        },
+                        maxWidth: 400,
+                        displayColors: false,
+                        callbacks: {
+                            title: function(context) {
+                                // Показываем полный текст вопроса в тултипе
+                                const index = context[0].dataIndex;
+                                return topQuestions[index].question_text;
+                            },
+                            label: function(context) {
+                                return 'Процент ошибок: ' + context.parsed.y.toFixed(1) + '%';
+                            },
+                            footer: function(context) {
+                                const index = context[0].dataIndex;
+                                return 'Всего ответов: ' + topQuestions[index].total_answers;
+                            }
                         }
                     }
                 }
             }
-        }
-    });
+        });
+    } else {
+        const questionDifficultyCtx = document.getElementById('questionDifficultyChart').getContext('2d');
+        questionDifficultyCtx.canvas.parentNode.innerHTML = '<div class="alert alert-info">Нет данных для анализа вопросов</div>';
+    }
 
     // Распределение результатов
     const scoreRanges = ['0-20%', '21-40%', '41-60%', '61-80%', '81-100%'];
-    const distribution = {{ statistics.score_distribution|safe }};
+    const distribution = {{ statistics.score_distribution|default:"[0,0,0,0,0]"|safe }};
 
     const scoreDistributionCtx = document.getElementById('scoreDistributionChart').getContext('2d');
-    new Chart(scoreDistributionCtx, {
+    if (distribution && distribution.length > 0) {
+        new Chart(scoreDistributionCtx, {
         type: 'line',
         data: {
             labels: scoreRanges,
@@ -487,6 +535,9 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     });
+    } else {
+        scoreDistributionCtx.canvas.parentNode.innerHTML = '<div class="alert alert-info">Нет данных для распределения результатов</div>';
+    }
 
     // Топ сложных вопросов
     const difficultQuestionsContainer = document.getElementById('difficultQuestions');
@@ -495,23 +546,53 @@ document.addEventListener('DOMContentLoaded', function() {
     let difficultQuestionsHTML = '';
     sortedQuestions.forEach((item, index) => {
         const badgeClass = item.error_rate > 50 ? 'bg-danger' : item.error_rate > 30 ? 'bg-warning' : 'bg-success';
+        // Показываем полный текст вопроса без сокращений
+        const questionId = `question-${index}`;
+        
         difficultQuestionsHTML += `
-            <div class="d-flex justify-content-between align-items-center mb-2 p-2 border rounded">
-                <div>
-                    <small class="text-muted">#${index + 1} ${item.test_title}</small>
-                    <div class="fw-bold small">${item.question_text}</div>
-                    <small class="text-muted">${item.total_answers} ответов</small>
+            <div class="mb-4 p-4 border rounded shadow-sm">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="flex-grow-1 me-3">
+                        <div class="text-muted mb-3" style="font-size: 1.1rem; font-weight: 600;">#${index + 1} ${item.test_title}</div>
+                        <div class="fw-bold mt-1" style="font-size: 1.3rem; line-height: 1.6; color: #2c3e50; word-wrap: break-word; overflow-wrap: break-word;">
+                            ${item.question_text}
+                        </div>
+                        <div class="text-muted mt-3" style="font-size: 1.1rem; font-weight: 500;">
+                            <i class="fas fa-users me-2"></i>${item.total_answers} ответов
+                        </div>
+                    </div>
+                    <span class="badge ${badgeClass}" style="font-size: 1.2rem; padding: 0.8rem 1.2rem; min-width: 70px; text-align: center;">
+                        ${item.error_rate.toFixed(1)}%
+                    </span>
                 </div>
-                <span class="badge ${badgeClass}">${item.error_rate.toFixed(1)}%</span>
             </div>
         `;
     });
-    
+
     if (difficultQuestionsHTML) {
         difficultQuestionsContainer.innerHTML = difficultQuestionsHTML;
     } else {
         difficultQuestionsContainer.innerHTML = '<div class="alert alert-info">Нет данных для анализа</div>';
     }
 });
+
+// Функция для переключения отображения полного текста вопроса
+function toggleQuestion(questionId) {
+    const shortElement = document.getElementById(questionId + '-short');
+    const fullElement = document.getElementById(questionId + '-full');
+    const button = event.target.closest('button');
+    
+    if (fullElement.style.display === 'none') {
+        shortElement.style.display = 'none';
+        fullElement.style.display = 'inline';
+        button.innerHTML = '<i class="fas fa-compress-alt me-1"></i>скрыть';
+        button.className = 'btn btn-outline-secondary btn-sm p-1 px-2 ms-2 text-decoration-none';
+    } else {
+        shortElement.style.display = 'inline';
+        fullElement.style.display = 'none';
+        button.innerHTML = '<i class="fas fa-expand-alt me-1"></i>показать полностью';
+        button.className = 'btn btn-outline-primary btn-sm p-1 px-2 ms-2 text-decoration-none';
+    }
+}
 </script>
 {% endblock %}
