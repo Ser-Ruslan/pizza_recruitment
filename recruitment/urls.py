@@ -71,4 +71,5 @@ path('vacancies/<int:vacancy_id>/quick-apply/', views.quick_apply, name='quick_a
     path('hr/test-statistics/', views.test_statistics, name='test_statistics'),
     path('test/<int:test_id>/take/', views.take_test, name='take_test'),
     path('test/token/<str:token>/', views.take_test_by_token, name='take_test_by_token'),
+    path('candidate/tests/', views.candidate_tests, name='candidate_tests'),
 ]

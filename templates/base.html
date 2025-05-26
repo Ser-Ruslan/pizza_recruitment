@@ -61,6 +61,19 @@
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'application_list' %}">Заявки</a>
                         </li>
+                        
+                        {% if user.profile.role == 'CANDIDATE' %}
+                            <li class="nav-item">
+                                <a class="nav-link position-relative" href="{% url 'candidate_tests' %}">
+                                    <i class="fas fa-tasks me-2"></i>Мои тесты
+                                    {% if pending_tests_count %}
+                                        <span class="badge rounded-pill bg-danger position-absolute top-0 start-100 translate-middle">
+                                            {{ pending_tests_count }}
+                                        </span>
+                                    {% endif %}
+                                </a>
+                            </li>
+                        {% endif %}
                     {% endif %}
                 </ul>
 

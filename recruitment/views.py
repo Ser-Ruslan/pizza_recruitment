@@ -573,21 +573,22 @@ def hr_dashboard(request):
     
     # Statistics by competency (position type)
     competency_stats = []
-    for position_type in PositionType.objects.all():
-        if hasattr(position_type, 'test') and position_type.test:
-            test = position_type.test
-            test_attempts = test.attempts.all()
-            total = test_attempts.count()
-            passed = test_attempts.filter(passed=True).count()
-            avg_score = test_attempts.aggregate(Avg('score'))['score__avg'] or 0
-            
-            competency_stats.append({
-                'position_type': position_type.title,
-                'total_attempts': total,
-                'passed_attempts': passed,
-                'success_rate': (passed * 100 / total) if total > 0 else 0,
-                'avg_score': avg_score
-            })
+    # Get all active tests
+    all_tests = Test.objects.filter(is_active=True)
+    
+    for test in all_tests:
+        test_attempts = test.attempts.all()
+        total = test_attempts.count()
+        passed = test_attempts.filter(passed=True).count()
+        avg_score = test_attempts.aggregate(Avg('score'))['score__avg'] or 0
+        
+        competency_stats.append({
+            'position_type': test.position_type.title,
+            'total_attempts': total,
+            'passed_attempts': passed,
+            'success_rate': (passed * 100 / total) if total > 0 else 0,
+            'avg_score': avg_score
+        })
 
     test_statistics = {
         'total_attempts': total_test_attempts,
@@ -1408,3 +1409,46 @@ def test_statistics(request):
         })
 
     return render(request, 'hr/test_statistics.html', {'statistics': statistics})
+
+@login_required
+@candidate_required
+def candidate_tests(request):
+    user = request.user
+    
+    # Get all active tests
+    tests = Test.objects.filter(is_active=True)
+    
+    test_data = []
+    for test in tests:
+        # Get user's attempts for this test
+        user_attempts = TestAttempt.objects.filter(test=test, user=user).order_by('-start_time')
+        
+        # Check if user has passed this test
+        passed_attempt = user_attempts.filter(passed=True).first()
+        
+        # Get latest attempt
+        latest_attempt = user_attempts.first()
+        
+        # Find related vacancies for this position type
+        related_vacancies = Vacancy.objects.filter(
+            position_type=test.position_type, 
+            is_active=True
+        )
+        
+        test_data.append({
+            'test': test,
+            'passed_attempt': passed_attempt,
+            'latest_attempt': latest_attempt,
+            'all_attempts': user_attempts,
+            'related_vacancies': related_vacancies,
+            'can_retake': not passed_attempt,  # Can retake if not passed yet
+        })
+    
+    context = {
+        'test_data': test_data,
+        'total_tests': tests.count(),
+        'passed_tests': len([td for td in test_data if td['passed_attempt']]),
+        'pending_tests': len([td for td in test_data if not td['passed_attempt']]),
+    }
+    
+    return render(request, 'candidates/tests.html', context)

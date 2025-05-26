@@ -1,0 +1,141 @@
+
+{% extends 'base.html' %}
+
+{% block title %}Мои тесты - PizzaJobs{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-tasks me-2"></i>Мои тесты</h2>
+                <div class="text-muted">
+                    <span class="badge bg-secondary me-2">Всего: {{ total_tests }}</span>
+                    <span class="badge bg-success me-2">Пройдено: {{ passed_tests }}</span>
+                    {% if pending_tests > 0 %}
+                        <span class="badge bg-warning">Ожидает: {{ pending_tests }}</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if test_data %}
+        <div class="row">
+            {% for data in test_data %}
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card h-100 {% if data.passed_attempt %}border-success{% elif data.latest_attempt %}border-warning{% else %}border-danger{% endif %}">
+                        <div class="card-header {% if data.passed_attempt %}bg-success text-white{% elif data.latest_attempt %}bg-warning{% else %}bg-danger text-white{% endif %}">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-clipboard-check me-2"></i>{{ data.test.position_type.title }}
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <h6 class="card-subtitle mb-2 text-muted">{{ data.test.title }}</h6>
+                            <p class="card-text">{{ data.test.description|truncatewords:20 }}</p>
+                            
+                            <div class="mb-3">
+                                <small class="text-muted">
+                                    <i class="fas fa-clock me-1"></i>Время: {{ data.test.time_limit }} мин
+                                    <br>
+                                    <i class="fas fa-target me-1"></i>Проходной балл: {{ data.test.passing_score }}%
+                                </small>
+                            </div>
+
+                            {% if data.passed_attempt %}
+                                <div class="alert alert-success py-2 mb-2">
+                                    <small>
+                                        <i class="fas fa-check-circle me-1"></i>
+                                        <strong>Тест пройден!</strong><br>
+                                        Результат: {{ data.passed_attempt.score }}%<br>
+                                        Дата: {{ data.passed_attempt.end_time|date:"d.m.Y H:i" }}
+                                    </small>
+                                </div>
+                            {% elif data.latest_attempt %}
+                                <div class="alert alert-warning py-2 mb-2">
+                                    <small>
+                                        <i class="fas fa-exclamation-triangle me-1"></i>
+                                        <strong>Тест не пройден</strong><br>
+                                        Последний результат: {{ data.latest_attempt.score }}%<br>
+                                        Дата: {{ data.latest_attempt.end_time|date:"d.m.Y H:i" }}
+                                    </small>
+                                </div>
+                            {% else %}
+                                <div class="alert alert-info py-2 mb-2">
+                                    <small>
+                                        <i class="fas fa-info-circle me-1"></i>
+                                        <strong>Тест не пройден</strong><br>
+                                        Необходимо пройти для подачи заявки
+                                    </small>
+                                </div>
+                            {% endif %}
+
+                            {% if data.related_vacancies.exists %}
+                                <div class="mb-3">
+                                    <small class="text-muted">
+                                        <strong>Связанные вакансии:</strong>
+                                    </small>
+                                    {% for vacancy in data.related_vacancies|slice:":2" %}
+                                        <div class="mt-1">
+                                            <a href="{% url 'vacancy_detail' vacancy.id %}" class="text-decoration-none small">
+                                                <i class="fas fa-briefcase me-1"></i>{{ vacancy.title }}
+                                            </a>
+                                        </div>
+                                    {% endfor %}
+                                    {% if data.related_vacancies.count > 2 %}
+                                        <small class="text-muted">и ещё {{ data.related_vacancies.count|add:"-2" }} вакансий...</small>
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="card-footer bg-transparent">
+                            {% if data.can_retake %}
+                                <a href="{% url 'take_test' data.test.id %}" class="btn btn-primary btn-sm">
+                                    <i class="fas fa-play me-1"></i>
+                                    {% if data.latest_attempt %}Пересдать тест{% else %}Пройти тест{% endif %}
+                                </a>
+                            {% else %}
+                                <button class="btn btn-success btn-sm" disabled>
+                                    <i class="fas fa-check me-1"></i>Тест пройден
+                                </button>
+                            {% endif %}
+                            
+                            {% if data.all_attempts.count > 1 %}
+                                <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#attempts-{{ data.test.id }}">
+                                    <i class="fas fa-history me-1"></i>История попыток
+                                </button>
+                            {% endif %}
+                        </div>
+                        
+                        {% if data.all_attempts.count > 1 %}
+                            <div class="collapse" id="attempts-{{ data.test.id }}">
+                                <div class="card-body border-top">
+                                    <h6 class="mb-2">История попыток:</h6>
+                                    {% for attempt in data.all_attempts %}
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <small>
+                                                {{ attempt.end_time|date:"d.m.Y H:i" }}
+                                                {% if attempt.passed %}
+                                                    <span class="badge bg-success">Пройден</span>
+                                                {% else %}
+                                                    <span class="badge bg-danger">Не пройден</span>
+                                                {% endif %}
+                                            </small>
+                                            <small><strong>{{ attempt.score }}%</strong></small>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle me-2"></i>
+            В данный момент нет доступных тестов.
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
