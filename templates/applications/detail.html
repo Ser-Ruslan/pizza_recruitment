@@ -200,8 +200,14 @@
                                                 {% endif %}
                                             </td>
                                             <td>
-                                                <span class="badge {% if interview.completed %}bg-success{% else %}bg-warning{% endif %}">
-                                                    {% if interview.completed %}Завершено{% else %}Запланировано{% endif %}
+                                                <span class="badge 
+                                                    {% if interview.status == 'COMPLETED' %}bg-success
+                                                    {% elif interview.status == 'CANCELLED' %}bg-danger
+                                                    {% elif interview.status == 'CONFIRMED' %}bg-info
+                                                    {% elif interview.status == 'IN_PROGRESS' %}bg-primary
+                                                    {% elif interview.status == 'RESCHEDULED' %}bg-secondary
+                                                    {% else %}bg-warning{% endif %}">
+                                                    {{ interview.get_status_display }}
                                                 </span>
                                             </td>
                                         </tr>

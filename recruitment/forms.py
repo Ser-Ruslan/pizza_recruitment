@@ -309,7 +309,7 @@ class ApplicationCommentForm(forms.ModelForm):
 class InterviewForm(forms.ModelForm):
     class Meta:
         model = Interview
-        fields = ['interviewer', 'restaurant', 'date_time', 'location', 'is_online', 'meeting_link', 'notes']
+        fields = ['interviewer', 'restaurant', 'date_time', 'location', 'is_online', 'meeting_link', 'notes', 'status']
         widgets = {
             'date_time': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
             'notes': forms.Textarea(attrs={'rows': 3}),

@@ -27,7 +27,7 @@ from .models import (
     User, UserProfile, Resume, Restaurant, PositionType, 
     Vacancy, Application, Interview, ApplicationComment, 
     Notification, UserRole, ApplicationStatus, Test,
-    TestAttempt, Question, Answer, UserAnswer
+    TestAttempt, Question, Answer, UserAnswer, InterviewStatus
 )
 from .forms import (
     UserRegisterForm, UserProfileForm, ResumeUploadForm, 
@@ -540,6 +540,86 @@ def application_detail(request, application_id):
     return render(request, 'applications/detail.html', context)
 
 # HR Dashboard views
+def get_trend_data():
+    """Получить данные трендов для различных периодов"""
+    from datetime import datetime, timedelta
+    from django.utils import timezone
+
+    now = timezone.now()
+    periods = {
+        'current': now,
+        '1_week': now - timedelta(weeks=1),
+        '2_weeks': now - timedelta(weeks=2), 
+        '1_month': now - timedelta(days=30),
+        '2_months': now - timedelta(days=60),
+        '6_months': now - timedelta(days=180),
+        '1_year': now - timedelta(days=365)
+    }
+
+    trend_data = {}
+
+    for period_name, period_date in periods.items():
+        # Вакансии на момент периода
+        vacancies_total = Vacancy.objects.filter(created_at__lte=period_date).count()
+        vacancies_active = Vacancy.objects.filter(created_at__lte=period_date, is_active=True).count()
+
+        # Заявки за период
+        applications_total = Application.objects.filter(applied_at__lte=period_date).count()
+        applications_new = Application.objects.filter(applied_at__lte=period_date, status='NEW').count()
+        # Принятые заявки: ACCEPTED + INTERVIEW_SCHEDULED + REJECTED (все обработанные)
+        applications_accepted = Application.objects.filter(
+            applied_at__lte=period_date, 
+            status__in=['ACCEPTED', 'INTERVIEW_SCHEDULED', 'REJECTED']
+        ).count()
+
+        # Быстрые заявки за период
+        quick_apps_total = QuickApplication.objects.filter(created_at__lte=period_date).count()
+        quick_apps_new = QuickApplication.objects.filter(created_at__lte=period_date, status='NEW').count()
+
+        # Интервью за период - все заявки со статусом INTERVIEW_SCHEDULED
+        interviews_total = Application.objects.filter(
+            applied_at__lte=period_date, 
+            status='INTERVIEW_SCHEDULED'
+        ).count()
+        interviews_scheduled = Application.objects.filter(
+            applied_at__lte=period_date, 
+            status='INTERVIEW_SCHEDULED'
+        ).count()
+        # Добавляем реальные завершенные интервью
+        interviews_completed = Interview.objects.filter(
+            date_time__lte=period_date, 
+            status='COMPLETED'
+        ).count()
+
+        # Тесты за период
+        test_attempts = TestAttempt.objects.filter(start_time__lte=period_date).count()
+        test_passed = TestAttempt.objects.filter(start_time__lte=period_date, passed=True).count()
+        test_success_rate = (test_passed * 100 / test_attempts) if test_attempts > 0 else 0
+
+        trend_data[period_name] = {
+            'vacancies_total': vacancies_total,
+            'vacancies_active': vacancies_active,
+            'applications_total': applications_total,
+            'applications_new': applications_new,
+            'applications_accepted': applications_accepted,
+            'quick_apps_total': quick_apps_total,
+            'quick_apps_new': quick_apps_new,
+            'interviews_total': interviews_total,
+            'interviews_scheduled': interviews_scheduled,
+            'interviews_completed': interviews_completed,
+            'test_attempts': test_attempts,
+            'test_passed': test_passed,
+            'test_success_rate': test_success_rate
+        }
+
+    return trend_data
+
+def calculate_trend_percentage(current, previous):
+    """Вычислить процент изменения между периодами"""
+    if previous == 0:
+        return 100 if current > 0 else 0
+    return round(((current - previous) / previous) * 100, 1)
+
 @login_required
 @hr_required
 def hr_dashboard(request):
@@ -626,6 +706,45 @@ def hr_dashboard(request):
             'competency_stats': competency_stats,
         }
 
+        # === ДАННЫЕ ТРЕНДОВ ===
+        trend_data = get_trend_data()
+
+        # Текущие данные для сравнения
+        current = {
+            'vacancies_total': total_vacancies,
+            'vacancies_active': active_vacancies,
+            'applications_total': total_all_applications,
+            'applications_new': new_applications,
+            'applications_accepted': Application.objects.filter(
+                status__in=['ACCEPTED', 'INTERVIEW_SCHEDULED', 'REJECTED']
+            ).count(),
+            'quick_apps_total': total_quick_applications,
+            'interviews_total': Application.objects.filter(status='INTERVIEW_SCHEDULED').count(),
+            'test_success_rate': success_rate
+        }
+
+        # Вычисляем тренды для каждого периода
+        trends = {}
+        for period in ['1_week', '2_weeks', '1_month', '2_months', '6_months', '1_year']:
+            period_data = trend_data[period]
+            trends[period] = {
+                'vacancies_total': calculate_trend_percentage(current['vacancies_total'], period_data['vacancies_total']),
+                'vacancies_active': calculate_trend_percentage(current['vacancies_active'], period_data['vacancies_active']),
+                'applications_total': calculate_trend_percentage(current['applications_total'], period_data['applications_total']),
+                'applications_new': calculate_trend_percentage(current['applications_new'], period_data['applications_new']),
+                'applications_accepted': calculate_trend_percentage(current['applications_accepted'], period_data['applications_accepted']),
+                'quick_apps_total': calculate_trend_percentage(current['quick_apps_total'], period_data['quick_apps_total']),
+                'interviews_total': calculate_trend_percentage(current['interviews_total'], period_data['interviews_total']),
+                'test_success_rate': calculate_trend_percentage(current['test_success_rate'], period_data['test_success_rate'])
+            }
+
+        # Добавляем отладочную информацию
+        print("=== DEBUG TRENDS DATA ===")
+        print("Current data:", current)
+        print("Trend data keys:", trend_data.keys())
+        print("Trends:", trends)
+        print("===========================")
+
         context = {
             # Статистика вакансий
             'total_vacancies': total_vacancies,
@@ -634,6 +753,8 @@ def hr_dashboard(request):
 
             # Статистика откликов
             'total_applications': total_applications,
+            'total_all_applications': total_all_applications,
+            'total_quick_applications': total_quick_applications,
             'new_regular_applications': new_regular_applications,  # ИЗМЕНЕНО
             'new_quick_applications': new_quick_applications,
             'new_applications': new_applications,
@@ -642,7 +763,14 @@ def hr_dashboard(request):
             # Прочая статистика
             'recent_applications': recent_applications,
             'interviews_scheduled': interviews_scheduled,
+            'processed_applications': Application.objects.filter(
+                status__in=['ACCEPTED', 'INTERVIEW_SCHEDULED', 'REJECTED']
+            ).count(),
             'test_statistics': test_statistics,
+
+            # Данные трендов (сериализуем в JSON)
+            'trend_data': json.dumps(trend_data),
+            'trends': json.dumps(trends),
         }
 
         return render(request, 'hr/dashboard.html', context)
@@ -731,7 +859,7 @@ def create_vacancy_manager(request):
             # Уведомляем HR менеджеров о новой вакансии
             hr_users = User.objects.filter(profile__role=UserRole.HR_MANAGER)
             restaurant_names = ', '.join([r.name for r in selected_restaurants.all()])
-            
+
             for hr in hr_users:
                 Notification.objects.create(
                     user=hr,
@@ -746,7 +874,7 @@ def create_vacancy_manager(request):
         form = VacancyForm()
         managed_restaurants = Restaurant.objects.filter(manager=request.user)
         form.fields['restaurants'].queryset = managed_restaurants
-        
+
         if not managed_restaurants.exists():
             messages.error(request, 'Вы не управляете ни одним рестораном. Обратитесь к администратору.')
             return redirect('manager_dashboard')
@@ -1671,6 +1799,34 @@ def create_candidate(request):
         'form': form,
     }
     return render(request, 'hr/create_candidate.html', context)
+
+@login_required
+@hr_required
+def view_candidate_profile(request, candidate_id):
+    candidate = get_object_or_404(User, id=candidate_id, profile__role=UserRole.CANDIDATE)
+    candidate_profile = candidate.profile
+
+    # Получаем резюме кандидата
+    resumes = Resume.objects.filter(user=candidate, is_active=True)
+
+    # Получаем заявки кандидата
+    applications = Application.objects.filter(user=candidate).order_by('-applied_at')
+
+    # Получаем быстрые заявки, если есть
+    quick_applications = QuickApplication.objects.filter(user_created=candidate).order_by('-created_at')
+
+    # Получаем статистику по тестам
+    test_attempts = TestAttempt.objects.filter(user=candidate).order_by('-start_time')
+
+    context = {
+        'candidate': candidate,
+        'profile': candidate_profile,
+        'resumes': resumes,
+        'applications': applications,
+        'quick_applications': quick_applications,
+        'test_attempts': test_attempts,
+    }
+    return render(request, 'hr/candidate_profile.html', context)
 
 @login_required
 @hr_required

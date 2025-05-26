@@ -1,0 +1,218 @@
+
+{% extends 'base.html' %}
+
+{% block title %}Профиль {{ candidate.get_full_name }} - PizzaJobs{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Профиль кандидата</h1>
+        <a href="{% url 'manage_candidates' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-2"></i>Назад к списку
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-4">
+            <!-- Основная информация -->
+            <div class="card shadow mb-4">
+                <div class="card-body text-center">
+                    {% if profile.photo %}
+                        <img src="{{ profile.photo.url }}" alt="Фото профиля" class="rounded-circle mb-3" style="width: 150px; height: 150px; object-fit: cover;">
+                    {% else %}
+                        <div class="rounded-circle bg-light d-flex align-items-center justify-content-center mx-auto mb-3" style="width: 150px; height: 150px;">
+                            <i class="fas fa-user fa-4x text-secondary"></i>
+                        </div>
+                    {% endif %}
+                    
+                    <h3>{{ candidate.get_full_name }}</h3>
+                    <p class="text-muted mb-3">{{ profile.desired_position|default:"Должность не указана" }}</p>
+                    
+                    <div class="mb-3">
+                        <small class="text-muted d-block">Email:</small>
+                        <strong>{{ candidate.email }}</strong>
+                    </div>
+                    
+                    {% if profile.phone %}
+                        <div class="mb-3">
+                            <small class="text-muted d-block">Телефон:</small>
+                            <strong>{{ profile.phone }}</strong>
+                        </div>
+                    {% endif %}
+                    
+                    {% if profile.city %}
+                        <div class="mb-3">
+                            <small class="text-muted d-block">Город:</small>
+                            <strong>{{ profile.city }}</strong>
+                        </div>
+                    {% endif %}
+                    
+                    <div class="mt-3">
+                        <a href="{% url 'apply_candidate' %}?candidate={{ candidate.id }}" class="btn btn-primary">
+                            <i class="fas fa-paper-plane me-2"></i>Подать заявку
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- О себе -->
+            {% if profile.about %}
+                <div class="card shadow mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">О себе</h5>
+                    </div>
+                    <div class="card-body">
+                        <p>{{ profile.about|linebreaks }}</p>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="col-lg-8">
+            <!-- Опыт работы -->
+            {% if profile.experience %}
+                <div class="card shadow mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Опыт работы</h5>
+                    </div>
+                    <div class="card-body">
+                        <p>{{ profile.experience|linebreaks }}</p>
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- Образование -->
+            {% if profile.education %}
+                <div class="card shadow mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Образование</h5>
+                    </div>
+                    <div class="card-body">
+                        <p>{{ profile.education|linebreaks }}</p>
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- Резюме -->
+            {% if resumes %}
+                <div class="card shadow mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Резюме</h5>
+                    </div>
+                    <div class="card-body">
+                        {% for resume in resumes %}
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <div>
+                                    <strong>{{ resume.title }}</strong>
+                                    <small class="text-muted d-block">Загружено: {{ resume.uploaded_at|date:"d.m.Y" }}</small>
+                                </div>
+                                <a href="{{ resume.file.url }}" class="btn btn-outline-primary btn-sm" target="_blank">
+                                    <i class="fas fa-download me-1"></i>Скачать
+                                </a>
+                            </div>
+                            {% if not forloop.last %}<hr>{% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- Заявки -->
+            {% if applications %}
+                <div class="card shadow mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Заявки ({{ applications.count }})</h5>
+                    </div>
+                    <div class="card-body">
+                        {% for application in applications %}
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div>
+                                    <h6 class="mb-1">{{ application.vacancy.title }}</h6>
+                                    <small class="text-muted">{{ application.applied_at|date:"d.m.Y" }}</small>
+                                    <div>
+                                        {% if application.status == 'NEW' %}
+                                            <span class="badge bg-primary">Новая</span>
+                                        {% elif application.status == 'REVIEWING' %}
+                                            <span class="badge bg-warning">На рассмотрении</span>
+                                        {% elif application.status == 'INTERVIEW_SCHEDULED' %}
+                                            <span class="badge bg-info">Собеседование назначено</span>
+                                        {% elif application.status == 'ACCEPTED' %}
+                                            <span class="badge bg-success">Принята</span>
+                                        {% elif application.status == 'REJECTED' %}
+                                            <span class="badge bg-danger">Отклонена</span>
+                                        {% elif application.status == 'ON_HOLD' %}
+                                            <span class="badge bg-secondary">На паузе</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <a href="{% url 'application_detail' application.id %}" class="btn btn-outline-primary btn-sm">
+                                    Подробнее
+                                </a>
+                            </div>
+                            {% if not forloop.last %}<hr>{% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- Быстрые заявки -->
+            {% if quick_applications %}
+                <div class="card shadow mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Быстрые заявки ({{ quick_applications.count }})</h5>
+                    </div>
+                    <div class="card-body">
+                        {% for quick_app in quick_applications %}
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div>
+                                    <h6 class="mb-1">{{ quick_app.vacancy.title }}</h6>
+                                    <small class="text-muted">{{ quick_app.created_at|date:"d.m.Y" }}</small>
+                                    <div>
+                                        {% if quick_app.status == 'NEW' %}
+                                            <span class="badge bg-primary">Новая</span>
+                                        {% elif quick_app.status == 'REVIEWING' %}
+                                            <span class="badge bg-warning">На рассмотрении</span>
+                                        {% elif quick_app.status == 'ACCEPTED' %}
+                                            <span class="badge bg-success">Принята</span>
+                                        {% elif quick_app.status == 'REJECTED' %}
+                                            <span class="badge bg-danger">Отклонена</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            {% if not forloop.last %}<hr>{% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- Результаты тестов -->
+            {% if test_attempts %}
+                <div class="card shadow mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Результаты тестов ({{ test_attempts.count }})</h5>
+                    </div>
+                    <div class="card-body">
+                        {% for attempt in test_attempts %}
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div>
+                                    <h6 class="mb-1">{{ attempt.test.title }}</h6>
+                                    <small class="text-muted">{{ attempt.start_time|date:"d.m.Y H:i" }}</small>
+                                    <div>
+                                        {% if attempt.passed %}
+                                            <span class="badge bg-success">Пройден</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Не пройден</span>
+                                        {% endif %}
+                                        <span class="badge bg-light text-dark">{{ attempt.score|floatformat:1 }}%</span>
+                                    </div>
+                                </div>
+                            </div>
+                            {% if not forloop.last %}<hr>{% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

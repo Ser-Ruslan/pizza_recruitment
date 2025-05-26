@@ -148,7 +148,7 @@
                                                 Действия
                                             </button>
                                             <ul class="dropdown-menu">
-                                                <li><a class="dropdown-item" href="{% url 'view_profile' %}">
+                                                <li><a class="dropdown-item" href="{% url 'view_candidate_profile' candidate.id %}">
                                                     <i class="fas fa-user me-2"></i>Просмотр профиля
                                                 </a></li>
                                                 <li><a class="dropdown-item" href="{% url 'apply_candidate' %}?candidate={{ candidate.id }}">

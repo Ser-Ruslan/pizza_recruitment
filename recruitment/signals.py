@@ -1,9 +1,9 @@
 
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 from .models import (
     Application, ApplicationComment, Notification, Interview, 
-    UserRole, Restaurant, QuickApplication, User, UserProfile, ApplicationStatus, Resume
+    UserRole, Restaurant, QuickApplication, User, UserProfile, ApplicationStatus, Resume, InterviewStatus
 )
 from django.db import transaction
 from django.contrib.auth.models import User
@@ -55,6 +55,54 @@ def application_notifications(sender, instance, created, **kwargs):
                     f"Новая заявка на {vacancy.title}",
                     f"Поступила заявка от {instance.user.get_full_name()} на «{vacancy.title}»."
                 )
+    
+    # Если статус заявки изменился (не создание)
+    elif not created:
+        # Используем сохранённый старый статус
+        old_status = getattr(instance, '_old_status', None)
+        
+        # Если статус действительно изменился
+        if old_status and old_status != instance.status:
+                # Обновляем статус связанных собеседований
+                interviews = Interview.objects.filter(application=instance)
+                
+                for interview in interviews:
+                    old_interview_status = interview.status
+                    
+                    # Определяем новый статус собеседования на основе статуса заявки
+                    if instance.status == ApplicationStatus.REJECTED:
+                        interview.status = InterviewStatus.CANCELLED
+                    elif instance.status == ApplicationStatus.ACCEPTED:
+                        interview.status = InterviewStatus.COMPLETED
+                        interview.completed = True
+                    elif instance.status == ApplicationStatus.ON_HOLD:
+                        interview.status = InterviewStatus.RESCHEDULED
+                    
+                    # Сохраняем только если статус изменился
+                    if interview.status != old_interview_status:
+                        interview.save()
+                        
+                        # Уведомляем кандидата об изменении статуса собеседования
+                        send_notification_with_email(
+                            instance.user,
+                            f"Статус собеседования изменён",
+                            f"Статус вашего собеседования по вакансии «{instance.vacancy.title}» изменён на: {interview.get_status_display()}"
+                        )
+                        
+                        # Уведомляем интервьюера
+                        if interview.interviewer:
+                            send_notification_with_email(
+                                interview.interviewer,
+                                f"Статус собеседования изменён",
+                                f"Статус собеседования с {instance.user.get_full_name()} по вакансии «{instance.vacancy.title}» изменён на: {interview.get_status_display()}"
+                            )
+                
+                # Уведомляем кандидата об изменении статуса заявки
+                send_notification_with_email(
+                    instance.user,
+                    f"Статус заявки изменён",
+                    f"Статус вашей заявки на вакансию «{instance.vacancy.title}» изменён на: {instance.get_status_display()}"
+                )
 
 @receiver(post_save, sender=Interview)
 def interview_notifications(sender, instance, created, **kwargs):
@@ -71,6 +119,39 @@ def interview_notifications(sender, instance, created, **kwargs):
                 "Вас назначили интервьюером",
                 f"Вас назначили интервьюером для {user.get_full_name()} по вакансии «{instance.application.vacancy.title}» {instance.date_time.strftime('%d.%m.%Y в %H:%M')}."
             )
+    else:
+        # Если собеседование обновлено (не создано)
+        try:
+            # Получаем старый статус из базы данных
+            old_interview = Interview.objects.filter(id=instance.id).exclude(id=instance.id).first()
+            if old_interview and old_interview.status != instance.status:
+                user = instance.application.user
+                
+                # Уведомляем кандидата
+                send_notification_with_email(
+                    user,
+                    "Обновление по собеседованию",
+                    f"Статус вашего собеседования по вакансии «{instance.application.vacancy.title}» изменён на: {instance.get_status_display()}"
+                )
+                
+                # Уведомляем интервьюера
+                if instance.interviewer:
+                    send_notification_with_email(
+                        instance.interviewer,
+                        "Обновление по собеседованию",
+                        f"Статус собеседования с {user.get_full_name()} по вакансии «{instance.application.vacancy.title}» изменён на: {instance.get_status_display()}"
+                    )
+                
+                # Уведомляем HR менеджеров
+                hr_users = User.objects.filter(profile__role=UserRole.HR_MANAGER)
+                for hr in hr_users:
+                    send_notification_with_email(
+                        hr,
+                        "Обновление статуса собеседования",
+                        f"Статус собеседования с {user.get_full_name()} по вакансии «{instance.application.vacancy.title}» изменён на: {instance.get_status_display()}"
+                    )
+        except:
+            pass
 
 @receiver(post_save, sender=ApplicationComment)
 def comment_notifications(sender, instance, created, **kwargs):
@@ -218,3 +299,15 @@ def quick_application_handler(sender, instance, created, **kwargs):
 
             # Удаляем быструю заявку
             instance.delete()
+
+@receiver(pre_save, sender=Application)
+def store_old_application_status(sender, instance, **kwargs):
+    """Сохраняем старый статус заявки для сравнения в post_save"""
+    if instance.pk:
+        try:
+            old_instance = Application.objects.get(pk=instance.pk)
+            instance._old_status = old_instance.status
+        except Application.DoesNotExist:
+            instance._old_status = None
+    else:
+        instance._old_status = None

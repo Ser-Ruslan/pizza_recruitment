@@ -166,6 +166,15 @@ class Application(models.Model):
 
 
 # Interview Model
+class InterviewStatus(models.TextChoices):
+    SCHEDULED = 'SCHEDULED', 'Запланировано'
+    CONFIRMED = 'CONFIRMED', 'Подтверждено'
+    IN_PROGRESS = 'IN_PROGRESS', 'В процессе'
+    COMPLETED = 'COMPLETED', 'Завершено'
+    CANCELLED = 'CANCELLED', 'Отменено'
+    RESCHEDULED = 'RESCHEDULED', 'Перенесено'
+
+
 class Interview(models.Model):
     application = models.ForeignKey(Application,
                                     on_delete=models.CASCADE,
@@ -187,6 +196,9 @@ class Interview(models.Model):
     meeting_link = models.URLField(blank=True, null=True)
     notes = models.TextField(blank=True, null=True)
     completed = models.BooleanField(default=False)
+    status = models.CharField(max_length=20,
+                              choices=InterviewStatus.choices,
+                              default=InterviewStatus.SCHEDULED)
 
     def __str__(self):
         return f"Interview for {self.application.user.username} on {self.date_time}"

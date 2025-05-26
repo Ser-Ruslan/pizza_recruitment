@@ -10,6 +10,64 @@
     .stat-card:hover {
         transform: translateY(-5px);
     }
+    .trend-card {
+        border-left: 4px solid;
+        transition: all 0.3s ease;
+    }
+    .trend-card:hover {
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    .trend-positive { border-left-color: #28a745; }
+    .trend-negative { border-left-color: #dc3545; }
+    .trend-neutral { border-left-color: #6c757d; }
+    .trend-icon {
+        font-size: 1.2em;
+        margin-right: 0.5rem;
+    }
+    .metric-value {
+        font-size: 1.8rem;
+        font-weight: bold;
+        margin-bottom: 0.25rem;
+    }
+    .metric-label {
+        color: #6c757d;
+        font-size: 0.9rem;
+        margin-bottom: 0.5rem;
+    }
+    .trend-value {
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+    .period-selector {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 0.5rem;
+        margin-bottom: 1.5rem;
+    }
+    .period-btn {
+        border: none;
+        background: transparent;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        transition: all 0.3s;
+        color: #6c757d;
+        font-size: 0.85rem;
+    }
+    .period-btn.active {
+        background: #007bff;
+        color: white;
+        box-shadow: 0 2px 4px rgba(0,123,255,0.3);
+    }
+    .period-btn:hover:not(.active) {
+        background: #e9ecef;
+        color: #495057;
+    }
+    .trends-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
 </style>
 {% endblock %}
 
@@ -30,67 +88,144 @@
         </div>
     </div>
 
-    <!-- Статистика вакансий -->
-    <div class="row mb-4">
-        <div class="col-md-3 mb-3">
-            <div class="card bg-danger text-white stat-card h-100 shadow">
-                <div class="card-body text-center">
-                    <h3 class="display-4">{{ total_vacancies }}</h3>
-                    <p class="mb-0">Всего вакансий</p>
-                </div>
-                <div class="card-footer bg-danger-dark d-flex justify-content-between align-items-center">
-                    <span>Управление</span>
-                    <a href="{% url 'manage_vacancies' %}" class="text-white">
-                        <i class="fas fa-arrow-circle-right"></i>
-                    </a>
-                </div>
-            </div>
+    <!-- Селектор периода для трендов -->
+    <div class="card shadow mb-4">
+        <div class="card-header bg-white">
+            <h3 class="card-title h5 mb-0">
+                <i class="fas fa-chart-line me-2 text-primary"></i>Статистика и тренды
+            </h3>
         </div>
-
-        <div class="col-md-3 mb-3">
-            <div class="card bg-success text-white stat-card h-100 shadow">
-                <div class="card-body text-center">
-                    <h3 class="display-4">{{ active_vacancies }}</h3>
-                    <p class="mb-0">Активные вакансии</p>
-                </div>
-                <div class="card-footer bg-success-dark d-flex justify-content-between align-items-center">
-                    <span>Просмотр</span>
-                    <a href="{% url 'manage_vacancies' %}?status=active" class="text-white">
-                        <i class="fas fa-arrow-circle-right"></i>
-                    </a>
-                </div>
+        <div class="card-body">
+            <!-- Селектор периода -->
+            <div class="period-selector text-center">
+                <small class="text-muted d-block mb-2">Сравнить с периодом:</small>
+                <button class="period-btn active" data-period="1_week">1 неделя</button>
+                <button class="period-btn" data-period="2_weeks">2 недели</button>
+                <button class="period-btn" data-period="1_month">1 месяц</button>
+                <button class="period-btn" data-period="2_months">2 месяца</button>
+                <button class="period-btn" data-period="6_months">6 месяцев</button>
+                <button class="period-btn" data-period="1_year">1 год</button>
             </div>
-        </div>
 
-        <div class="col-md-3 mb-3">
-            <div class="card bg-primary text-white stat-card h-100 shadow">
-                <div class="card-body text-center">
-                    <h3 class="display-4">{{ total_applications }}</h3>
-                    <p class="mb-0">Всего откликов</p>
+            <!-- Основные метрики с трендами -->
+            <div class="trends-grid">
+                <!-- Вакансии -->
+                <div class="card trend-card trend-positive border-0" id="trend-vacancies">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="metric-value text-primary">{{ total_vacancies }}</div>
+                                <div class="metric-label">Всего вакансий</div>
+                                <div class="trend-value">
+                                    <span class="trend-icon text-success">↗</span>
+                                    <span class="trend-text text-success">+0% за неделю</span>
+                                </div>
+                            </div>
+                            <i class="fas fa-briefcase fa-2x text-primary opacity-25"></i>
+                        </div>
+                        <div class="mt-2">
+                            <small class="text-muted">Активных: {{ active_vacancies }}</small>
+                        </div>
+                    </div>
                 </div>
-                <div class="card-footer bg-primary-dark d-flex justify-content-between align-items-center">
-                    <span>Просмотр откликов</span>
-                    <a href="{% url 'application_list' %}" class="text-white">
-                        <i class="fas fa-arrow-circle-right"></i>
-                    </a>
-                </div>
-            </div>
-        </div>
 
-        <div class="col-md-3 mb-3">
-            <div class="card bg-warning text-dark stat-card h-100 shadow">
-                <div class="card-body text-center">
-                    <h3 class="display-4">{{ new_regular_applications }} / {{ new_quick_applications }}</h3>
-                    <p class="mb-0">Новые отклики</p>
-                    <small class="text-muted">
-                        Обычные / Быстрые
-                    </small>
+                <!-- Отклики -->
+                <div class="card trend-card trend-positive border-0" id="trend-applications">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="metric-value text-info">{{ total_all_applications }}</div>
+                                <div class="metric-label">Всего откликов</div>
+                                <div class="trend-value">
+                                    <span class="trend-icon text-success">↗</span>
+                                    <span class="trend-text text-success">+0% за неделю</span>
+                                </div>
+                            </div>
+                            <i class="fas fa-paper-plane fa-2x text-info opacity-25"></i>
+                        </div>
+                        <div class="mt-2">
+                            <small class="text-muted">Быстрых: {{ total_quick_applications }}</small>
+                        </div>
+                    </div>
                 </div>
-                <div class="card-footer bg-warning-dark d-flex justify-content-between align-items-center">
-                    <span>Обработка</span>
-                    <a href="{% url 'application_list' %}?status=NEW" class="text-dark">
-                        <i class="fas fa-arrow-circle-right"></i>
-                    </a>
+
+                <!-- Новые заявки -->
+                <div class="card trend-card trend-positive border-0" id="trend-new-applications">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="metric-value text-warning">{{ new_regular_applications }} + {{ new_quick_applications }}</div>
+                                <div class="metric-label">Новые заявки</div>
+                                <div class="trend-value">
+                                    <span class="trend-icon text-success">↗</span>
+                                    <span class="trend-text text-success">+0% за неделю</span>
+                                </div>
+                            </div>
+                            <i class="fas fa-bell fa-2x text-warning opacity-25"></i>
+                        </div>
+                        <div class="mt-2">
+                            <small class="text-muted">Обычных / Быстрых</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Принятые заявки -->
+                <div class="card trend-card trend-positive border-0" id="trend-accepted">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="metric-value text-success" id="accepted-count">
+                                    {{ processed_applications }}
+                                </div>
+                                <div class="metric-label">Обработано заявок</div>
+                                <div class="trend-value">
+                                    <span class="trend-icon text-success">↗</span>
+                                    <span class="trend-text text-success">+0% за неделю</span>
+                                </div>
+                            </div>
+                            <i class="fas fa-check-circle fa-2x text-success opacity-25"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Интервью -->
+                <div class="card trend-card trend-positive border-0" id="trend-interviews">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="metric-value text-purple">{{ interviews_scheduled }}</div>
+                                <div class="metric-label">Запланировано интервью</div>
+                                <div class="trend-value">
+                                    <span class="trend-icon text-success">↗</span>
+                                    <span class="trend-text text-success">+0% за неделю</span>
+                                </div>
+                            </div>
+                            <i class="fas fa-handshake fa-2x text-purple opacity-25" style="color: #6f42c1!important;"></i>
+                        </div>
+                        <div class="mt-2">
+                            <small class="text-muted">Всего интервью: {{ trend_data.current.interviews_total }}</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Успешность тестов -->
+                <div class="card trend-card trend-positive border-0" id="trend-tests">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="metric-value text-dark">{{ test_statistics.success_rate|floatformat:1 }}%</div>
+                                <div class="metric-label">Успешность тестов</div>
+                                <div class="trend-value">
+                                    <span class="trend-icon text-success">↗</span>
+                                    <span class="trend-text text-success">+0% за неделю</span>
+                                </div>
+                            </div>
+                            <i class="fas fa-clipboard-check fa-2x text-dark opacity-25"></i>
+                        </div>
+                        <div class="mt-2">
+                            <small class="text-muted">Пройдено: {{ test_statistics.passed_attempts }}/{{ test_statistics.total_attempts }}</small>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -192,47 +327,18 @@
     <!-- Статистика тестирования -->
     <div class="card shadow mb-4">
         <div class="card-header bg-white d-flex justify-content-between align-items-center">
-            <h3 class="card-title h5 mb-0">Статистика тестирования</h3>
+            <h3 class="card-title h5 mb-0">Статистика тестирования по компетенциям</h3>
             <a href="{% url 'test_statistics' %}" class="btn btn-sm btn-outline-primary">
-                <i class="fas fa-history me-2"></i>История тестирования
+                <i class="fas fa-history me-2"></i>Подробная статистика
             </a>
         </div>
         <div class="card-body">
             <div class="row">
-                <div class="col-md-4">
-                    <div class="border rounded p-3 text-center">
-                        <h4>{{ test_statistics.total_attempts }}</h4>
-                        <p class="mb-0">Всего попыток</p>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="border rounded p-3 text-center">
-                        <h4>{{ test_statistics.passed_attempts }}</h4>
-                        <p class="mb-0">Успешных попыток</p>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="border rounded p-3 text-center">
-                        <h4>{{ test_statistics.success_rate|floatformat:1 }}%</h4>
-                        <p class="mb-0">Процент успешности</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Статистика по компетенциям -->
-    <div class="row mb-4">
-        <div class="col-lg-8">
-            <div class="card shadow">
-                <div class="card-header bg-white">
-                    <h3 class="card-title h5 mb-0">Статистика тестирования по компетенциям</h3>
-                </div>
-                <div class="card-body">
+                <div class="col-lg-8">
                     {% if test_statistics.competency_stats %}
                         <div class="table-responsive">
-                            <table class="table table-hover">
-                                <thead>
+                            <table class="table table-hover table-sm">
+                                <thead class="table-light">
                                     <tr>
                                         <th>Компетенция</th>
                                         <th>Попыток</th>
@@ -249,8 +355,8 @@
                                         <td>{{ stat.passed_attempts }}</td>
                                         <td>
                                             <div class="progress" style="height: 20px;">
-                                                <div class="progress-bar bg-success" role="progressbar" 
-                                                     style="width: {{ stat.success_rate }}%;">
+                                                <div class="progress-bar {% if stat.success_rate >= 80 %}bg-success{% elif stat.success_rate >= 60 %}bg-warning{% else %}bg-danger{% endif %}" 
+                                                     role="progressbar" style="width: {{ stat.success_rate }}%;">
                                                     {{ stat.success_rate|floatformat:1 }}%
                                                 </div>
                                             </div>
@@ -267,15 +373,8 @@
                         </div>
                     {% endif %}
                 </div>
-            </div>
-        </div>
 
-        <div class="col-lg-4">
-            <div class="card shadow">
-                <div class="card-header bg-white">
-                    <h3 class="card-title h5 mb-0">Успешность по компетенциям</h3>
-                </div>
-                <div class="card-body">
+                <div class="col-lg-4">
                     {% if test_statistics.competency_stats %}
                         <div class="chart-container" style="position: relative; height:300px; width:100%">
                             <canvas id="competencyChart"></canvas>
@@ -289,25 +388,6 @@
             </div>
         </div>
     </div>
-
-    <!-- Предстоящие собеседования -->
-    <div class="card shadow mb-4">
-        <div class="card-header bg-white">
-            <h3 class="card-title h5 mb-0">Предстоящие собеседования</h3>
-        </div>
-        <div class="card-body">
-        {% if interviews_scheduled %}
-
-        <i class="fas fa-calendar-alt me-2"></i>Запланировано <strong>{{ interviews_scheduled }}</strong> собеседований. Проверьте отклики для подробностей.
-
-    {% else %}
-        <div class="alert alert-info">
-            <i class="fas fa-info-circle me-2"></i>Нет предстоящих собеседований.
-        </div>
-    {% endif %}
-
-        </div>
-    </div>
 </div>
 {% endblock %}
 
@@ -316,6 +396,90 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Данные трендов из Django
+    const trendData = {{ trend_data|safe }};
+    const trends = {{ trends|safe }};
+
+    // Функция обновления трендов
+    function updateTrends(selectedPeriod) {
+        console.log('=== ДАННЫЕ ТРЕНДОВ ===');
+        console.log('trendData:', trendData);
+        console.log('trends:', trends);
+        console.log('selectedPeriod:', selectedPeriod);
+        
+        const currentData = trendData.current;
+        const periodTrends = trends[selectedPeriod];
+        
+        console.log('currentData:', currentData);
+        console.log('periodTrends:', periodTrends);
+        console.log('======================');
+
+        // Обновление карточек
+        updateTrendCard('trend-vacancies', currentData.vacancies_total, periodTrends.vacancies_total, 'вакансий');
+        updateTrendCard('trend-applications', currentData.applications_total, periodTrends.applications_total, 'откликов');
+        updateTrendCard('trend-new-applications', currentData.applications_new + currentData.quick_apps_new, periodTrends.applications_new, 'новых заявок');
+        updateTrendCard('trend-accepted', currentData.applications_accepted, periodTrends.applications_accepted, 'принятых');
+        updateTrendCard('trend-interviews', currentData.interviews_scheduled, periodTrends.interviews_total, 'интервью');
+        updateTrendCard('trend-tests', currentData.test_success_rate, periodTrends.test_success_rate, 'успешности');
+    }
+
+    function updateTrendCard(cardId, currentValue, trendValue, suffix) {
+        const card = document.getElementById(cardId);
+        if (!card) return;
+
+        const trendIcon = card.querySelector('.trend-icon');
+        const trendText = card.querySelector('.trend-text');
+
+        // Определяем направление тренда
+        let icon, colorClass, text;
+        if (trendValue > 0) {
+            icon = '↗';
+            colorClass = 'text-success';
+            text = `+${trendValue}%`;
+        } else if (trendValue < 0) {
+            icon = '↘';
+            colorClass = 'text-danger';
+            text = `${trendValue}%`;
+        } else {
+            icon = '→';
+            colorClass = 'text-muted';
+            text = '0%';
+        }
+
+        // Обновляем иконку и текст
+        trendIcon.textContent = icon;
+        trendIcon.className = `trend-icon ${colorClass}`;
+        trendText.textContent = `${text} за выбранный период`;
+        trendText.className = `trend-text ${colorClass}`;
+
+        // Обновляем класс карточки
+        card.className = card.className.replace(/trend-(positive|negative|neutral)/, '');
+        if (trendValue > 0) {
+            card.classList.add('trend-positive');
+        } else if (trendValue < 0) {
+            card.classList.add('trend-negative');
+        } else {
+            card.classList.add('trend-neutral');
+        }
+    }
+
+    // Обработчики кнопок периода
+    document.querySelectorAll('.period-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            // Убираем active у всех кнопок
+            document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+            // Добавляем active к текущей
+            this.classList.add('active');
+
+            // Обновляем тренды
+            const period = this.dataset.period;
+            updateTrends(period);
+        });
+    });
+
+    // Инициализация с периодом 1 неделя
+    updateTrends('1_week');
+
     // Конфигурация статусов откликов
     const statusConfig = {
         'NEW': { label: 'Новые', badge: 'bg-primary', color: 'rgba(13, 110, 253, 0.7)' },
@@ -370,10 +534,10 @@ document.addEventListener('DOMContentLoaded', function() {
         datasets: [{
             data: [
                 {% for item in vacancies_by_status %}
-                    {% if item.is_active %}{{ item.count }},{% endif %}
-                {% endfor %}
+                    {% if item.is_active %}{{ item.count }}{% endif %}
+                {% endfor %},
                 {% for item in vacancies_by_status %}
-                    {% if not item.is_active %}{{ item.count }},{% endif %}
+                    {% if not item.is_active %}{{ item.count }}{% endif %}
                 {% endfor %}
             ],
             backgroundColor: ['rgba(25, 135, 84, 0.7)', 'rgba(220, 53, 69, 0.7)'],
@@ -396,8 +560,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // --- Диаграмма: Успешность по компетенциям ---
     {% if test_statistics.competency_stats %}
-    console.log('Начинаем построение диаграммы компетенций...');
-
     const competencyLabels = [];
     const competencyData = [];
     const colorPalette = [
@@ -409,111 +571,62 @@ document.addEventListener('DOMContentLoaded', function() {
         'rgba(255, 159, 64, 0.7)'
     ];
 
-    // Заполняем данные одним циклом
     {% for stat in test_statistics.competency_stats %}
     competencyLabels.push('{{ stat.position_type|escapejs }}');
     competencyData.push(parseFloat('{{ stat.success_rate|floatformat:1 }}'));
     {% endfor %}
 
-    // Генерируем цвета на основе количества элементов
     const competencyColors = competencyLabels.map((_, index) => colorPalette[index % colorPalette.length]);
 
-    console.log('=== ДИАГРАММА КОМПЕТЕНЦИЙ ===');
-    console.log('Количество компетенций:', competencyLabels.length);
-    console.log('Названия:', competencyLabels);
-    console.log('Данные успешности:', competencyData);
-    console.log('Цвета:', competencyColors);
-    console.log('=============================');
-
-    // Проверяем совпадение длин массивов
-    if (competencyLabels.length === competencyData.length && competencyLabels.length === competencyColors.length) {
-        const competencyCtx = document.getElementById('competencyChart');
-        if (competencyCtx) {
-            new Chart(competencyCtx, {
-                type: 'bar',
-                data: {
-                    labels: competencyLabels,
-                    datasets: [{
-                        label: 'Успешность (%)',
-                        data: competencyData,
-                        backgroundColor: competencyColors,
-                        borderColor: competencyColors.map(color => color.replace('0.7', '1')),
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { 
-                            display: false 
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    return context.dataset.label + ': ' + context.parsed.y.toFixed(1) + '%';
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        x: {
-                            ticks: {
-                                maxRotation: 45,
-                                minRotation: 0
-                            }
-                        },
-                        y: {
-                            beginAtZero: true,
-                            max: 100,
-                            ticks: {
-                                callback: function(value) {
-                                    return value + '%';
-                                },
-                                stepSize: 20
+    const competencyCtx = document.getElementById('competencyChart');
+    if (competencyCtx) {
+        new Chart(competencyCtx, {
+            type: 'bar',
+            data: {
+                labels: competencyLabels,
+                datasets: [{
+                    label: 'Успешность (%)',
+                    data: competencyData,
+                    backgroundColor: competencyColors,
+                    borderColor: competencyColors.map(color => color.replace('0.7', '1')),
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataset.label + ': ' + context.parsed.y.toFixed(1) + '%';
                             }
                         }
                     }
+                },
+                scales: {
+                    x: {
+                        ticks: {
+                            maxRotation: 45,
+                            minRotation: 0
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: {
+                            callback: function(value) {
+                                return value + '%';
+                            },
+                            stepSize: 20
+                        }
+                    }
                 }
-            });
-            console.log('Диаграмма компетенций создана успешно');
-        } else {
-            console.error('Элемент competencyChart не найден');
-        }
-    } else {
-        console.error('Несоответствие размеров массивов:');
-        console.error('Labels:', competencyLabels.length);
-        console.error('Data:', competencyData.length);
-        console.error('Colors:', competencyColors.length);
+            }
+        });
     }
-    {% else %}
-    console.log('Нет данных test_statistics.competency_stats');
     {% endif %}
 });
 </script>
 {% endblock %}
-<div class="col-md-6 col-lg-4 mb-4">
-                    <div class="card border-0 shadow-sm h-100">
-                        <div class="card-body text-center">
-                            <i class="fas fa-chart-bar fa-3x text-info mb-3"></i>
-                            <h5 class="card-title">Статистика тестов</h5>
-                            <p class="card-text">Анализ результатов тестирования кандидатов</p>
-                            <a href="{% url 'hr_test_statistics' %}" class="btn btn-info">
-                                <i class="fas fa-chart-line me-2"></i>Открыть
-                            </a>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-md-6 col-lg-4 mb-4">
-                    <div class="card border-0 shadow-sm h-100">
-                        <div class="card-body text-center">
-                            <i class="fas fa-users fa-3x text-success mb-3"></i>
-                            <h5 class="card-title">Управление кандидатами</h5>
-                            <p class="card-text">База кандидатов и управление заявками</p>
-                            <a href="{% url 'manage_candidates' %}" class="btn btn-success">
-                                <i class="fas fa-users me-2"></i>Открыть
-                            </a>
-                        </div>
-                    </div>
-                </div>
