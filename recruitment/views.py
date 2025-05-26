@@ -566,6 +566,36 @@ def hr_dashboard(request):
         count=Count('id')
     )
 
+    # Test statistics
+    total_test_attempts = TestAttempt.objects.count()
+    passed_test_attempts = TestAttempt.objects.filter(passed=True).count()
+    test_success_rate = (passed_test_attempts * 100 / total_test_attempts) if total_test_attempts > 0 else 0
+    
+    # Statistics by competency (position type)
+    competency_stats = []
+    for position_type in PositionType.objects.all():
+        if hasattr(position_type, 'test') and position_type.test:
+            test = position_type.test
+            test_attempts = test.attempts.all()
+            total = test_attempts.count()
+            passed = test_attempts.filter(passed=True).count()
+            avg_score = test_attempts.aggregate(Avg('score'))['score__avg'] or 0
+            
+            competency_stats.append({
+                'position_type': position_type.title,
+                'total_attempts': total,
+                'passed_attempts': passed,
+                'success_rate': (passed * 100 / total) if total > 0 else 0,
+                'avg_score': avg_score
+            })
+
+    test_statistics = {
+        'total_attempts': total_test_attempts,
+        'passed_attempts': passed_test_attempts,
+        'success_rate': test_success_rate,
+        'competency_stats': competency_stats
+    }
+
     context = {
         'total_vacancies': total_vacancies,
         'active_vacancies': active_vacancies,
@@ -577,6 +607,7 @@ def hr_dashboard(request):
         'recent_applications': recent_applications,
         'vacancies_by_status': vacancies_by_status,
         'applications_by_status': applications_by_status,
+        'test_statistics': test_statistics,
     }
     return render(request, 'hr/dashboard.html', context)
 
@@ -1354,18 +1385,25 @@ def take_test_by_token(request, token):
 
 def test_statistics(request):
     tests = Test.objects.all()
+    total_attempts = TestAttempt.objects.count()
+    passed_attempts = TestAttempt.objects.filter(passed=True).count()
+    
     statistics = {
-        'total_attempts': TestAttempt.objects.count(),
-        'passed_attempts': TestAttempt.objects.filter(passed=True).count(),
+        'total_attempts': total_attempts,
+        'passed_attempts': passed_attempts,
+        'success_rate': (passed_attempts * 100 / total_attempts) if total_attempts > 0 else 0,
         'tests_data': []
     }
 
     for test in tests:
         test_attempts = test.attempts.all()
+        total = test_attempts.count()
+        passed = test_attempts.filter(passed=True).count()
         statistics['tests_data'].append({
             'test': test,
-            'total_attempts': test_attempts.count(),
-            'passed_attempts': test_attempts.filter(passed=True).count(),
+            'total_attempts': total,
+            'passed_attempts': passed,
+            'success_rate': (passed * 100 / total) if total > 0 else 0,
             'avg_score': test_attempts.aggregate(Avg('score'))['score__avg'] or 0
         })
 

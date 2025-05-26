@@ -18,21 +18,29 @@
                 <table class="table">
                     <thead>
                         <tr>
+                            <th>Компетенция</th>
                             <th>Тест</th>
-                            <th>Вакансия</th>
                             <th>Всего попыток</th>
                             <th>Успешных попыток</th>
                             <th>Средний балл</th>
+                            <th>Процент успешности</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for data in statistics.tests_data %}
                         <tr>
+                            <td><span class="badge bg-primary">{{ data.test.position_type.title }}</span></td>
                             <td>{{ data.test.title }}</td>
-                            <td>{{ data.test.vacancy.title }}</td>
                             <td>{{ data.total_attempts }}</td>
                             <td>{{ data.passed_attempts }}</td>
                             <td>{{ data.avg_score|floatformat:1 }}%</td>
+                            <td>
+                                {% if data.total_attempts > 0 %}
+                                    {{ data.success_rate|floatformat:1 }}%
+                                {% else %}
+                                    0%
+                                {% endif %}
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>

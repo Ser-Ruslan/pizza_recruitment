@@ -198,21 +198,90 @@
             <div class="row">
                 <div class="col-md-4">
                     <div class="border rounded p-3 text-center">
-                        <h4>{{ statistics.total_attempts }}</h4>
+                        <h4>{{ test_statistics.total_attempts }}</h4>
                         <p class="mb-0">Всего попыток</p>
                     </div>
                 </div>
                 <div class="col-md-4">
                     <div class="border rounded p-3 text-center">
-                        <h4>{{ statistics.passed_attempts }}</h4>
+                        <h4>{{ test_statistics.passed_attempts }}</h4>
                         <p class="mb-0">Успешных попыток</p>
                     </div>
                 </div>
                 <div class="col-md-4">
                     <div class="border rounded p-3 text-center">
-                        <h4>{{ statistics.success_rate }}%</h4>
+                        <h4>{{ test_statistics.success_rate|floatformat:1 }}%</h4>
                         <p class="mb-0">Процент успешности</p>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Статистика по компетенциям -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header bg-white">
+                    <h3 class="card-title h5 mb-0">Статистика тестирования по компетенциям</h3>
+                </div>
+                <div class="card-body">
+                    {% if test_statistics.competency_stats %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Компетенция</th>
+                                        <th>Попыток</th>
+                                        <th>Успешных</th>
+                                        <th>Успешность</th>
+                                        <th>Средний балл</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for stat in test_statistics.competency_stats %}
+                                    <tr>
+                                        <td><span class="badge bg-primary">{{ stat.position_type }}</span></td>
+                                        <td>{{ stat.total_attempts }}</td>
+                                        <td>{{ stat.passed_attempts }}</td>
+                                        <td>
+                                            <div class="progress" style="height: 20px;">
+                                                <div class="progress-bar bg-success" role="progressbar" 
+                                                     style="width: {{ stat.success_rate }}%;">
+                                                    {{ stat.success_rate|floatformat:1 }}%
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>{{ stat.avg_score|floatformat:1 }}%</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>Нет данных о тестировании для отображения.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <div class="card shadow">
+                <div class="card-header bg-white">
+                    <h3 class="card-title h5 mb-0">Успешность по компетенциям</h3>
+                </div>
+                <div class="card-body">
+                    {% if test_statistics.competency_stats %}
+                        <div class="chart-container" style="position: relative; height:300px; width:100%">
+                            <canvas id="competencyChart"></canvas>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>Нет данных для диаграммы.
+                        </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -323,6 +392,67 @@ document.addEventListener('DOMContentLoaded', function() {
             responsive: true,
             maintainAspectRatio: false,
             plugins: { legend:{ position:'right', labels:{ boxWidth:15 } } }
+        }
+    });
+    {% endif %}
+
+    // --- Диаграмма: Успешность по компетенциям ---
+    {% if test_statistics.competency_stats %}
+    const competencyLabels = [], competencyData = [], competencyColors = [
+        'rgba(255, 99, 132, 0.7)',   // Красный
+        'rgba(54, 162, 235, 0.7)',   // Синий
+        'rgba(255, 205, 86, 0.7)',   // Жёлтый
+        'rgba(75, 192, 192, 0.7)',   // Зелёный
+        'rgba(153, 102, 255, 0.7)',  // Фиолетовый
+        'rgba(255, 159, 64, 0.7)',   // Оранжевый
+        'rgba(199, 199, 199, 0.7)',  // Серый
+        'rgba(83, 102, 255, 0.7)'    // Индиго
+    ];
+
+    {% for stat in test_statistics.competency_stats %}
+        competencyLabels.push("{{ stat.position_type }}");
+        competencyData.push({{ stat.success_rate|floatformat:1 }});
+    {% endfor %}
+
+    const competencyCtx = document.getElementById('competencyChart').getContext('2d');
+    new Chart(competencyCtx, {
+        type: 'bar',
+        data: {
+            labels: competencyLabels,
+            datasets: [{
+                label: 'Процент успешности',
+                data: competencyData,
+                backgroundColor: competencyColors.slice(0, competencyLabels.length),
+                borderColor: competencyColors.slice(0, competencyLabels.length).map(c => c.replace('0.7', '1')),
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100,
+                    ticks: {
+                        callback: function(value) {
+                            return value + '%';
+                        }
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.parsed.y.toFixed(1) + '%';
+                        }
+                    }
+                }
+            }
         }
     });
     {% endif %}
