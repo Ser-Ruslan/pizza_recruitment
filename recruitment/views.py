@@ -1173,6 +1173,14 @@ def convert_quick_application(request, app_id):
             phone=quick_app.phone
         )
 
+        # Create resume from quick application
+        resume = Resume.objects.create(
+            user=user,
+            file=quick_app.resume,
+            title=f"Резюме {quick_app.full_name}",
+            is_active=True
+        )
+
         # Generate test token if test is required
         position_test = quick_app.vacancy.position_type.test
         if position_test and position_test.is_active:
@@ -1606,10 +1614,14 @@ def take_test_by_token(request, token):
             quick_app.status = ApplicationStatus.ACCEPTED
             quick_app.save()
 
+            # Get user's resume (should exist after convert_quick_application)
+            user_resume = Resume.objects.filter(user=request.user, is_active=True).first()
+
             # Create regular application
             regular_app = Application.objects.create(
                 vacancy=quick_app.vacancy,
                 user=request.user,
+                resume=user_resume,
                 cover_letter=quick_app.cover_letter,
                 status=ApplicationStatus.NEW
             )
