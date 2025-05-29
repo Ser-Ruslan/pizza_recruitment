@@ -138,10 +138,8 @@ MAX_RESUME_SIZE = 5 * 1024 * 1024  # 5MB
 
 # CSRF Settings
 CSRF_TRUSTED_ORIGINS = [
-    'https://*.replit.app',
-    'https://*.replit.dev',
-    'https://*.repl.co',
-    'https://*.replit.dev:3000'
+    'https://ser-ruslan-pizza-recruitment-98a2.twc1.net',
+    
 ]
 
 # Email settings
