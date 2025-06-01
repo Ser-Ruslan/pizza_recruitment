@@ -23,6 +23,7 @@
                                 {{ form.email|as_crispy_field }}
                                 {{ form.first_name|as_crispy_field }}
                                 {{ form.last_name|as_crispy_field }}
+                                {{ form.phone|as_crispy_field }}
                             </div>
                             <div class="col-md-6">
                                 {{ form.password1|as_crispy_field }}
@@ -30,8 +31,38 @@
                             </div>
                         </div>
                         
+                        <div class="card border-warning mt-4">
+                            <div class="card-body">
+                                <h6 class="card-title">
+                                    <i class="fas fa-shield-alt me-2 text-warning"></i>Согласие на обработку персональных данных
+                                </h6>
+                                <div class="mb-3">
+                                    <p class="small text-muted mb-2">
+                                        Пожалуйста, ознакомьтесь с нашей 
+                                        <a href="{% url 'privacy_policy' %}" target="_blank" id="privacy-link">
+                                            политикой конфиденциальности
+                                            <i class="fas fa-external-link-alt ms-1"></i>
+                                        </a>
+                                        перед регистрацией.
+                                    </p>
+                                    <div class="form-check">
+                                        {{ form.privacy_consent }}
+                                        <label class="form-check-label" for="{{ form.privacy_consent.id_for_label }}">
+                                            {{ form.privacy_consent.label }}
+                                        </label>
+                                        {% if form.privacy_consent.help_text %}
+                                            <div class="small text-muted mt-1">{{ form.privacy_consent.help_text }}</div>
+                                        {% endif %}
+                                        {% if form.privacy_consent.errors %}
+                                            <div class="text-danger small mt-1">{{ form.privacy_consent.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
                         <div class="d-grid gap-2 mt-4">
-                            <button type="submit" class="btn btn-danger">Зарегистрироваться</button>
+                            <button type="submit" class="btn btn-danger" id="submit-btn" disabled>Зарегистрироваться</button>
                         </div>
                     </form>
                     
@@ -43,4 +74,43 @@
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const privacyLink = document.getElementById('privacy-link');
+    const privacyConsent = document.getElementById('{{ form.privacy_consent.id_for_label }}');
+    const submitBtn = document.getElementById('submit-btn');
+    let privacyPolicyRead = false;
+    
+    // Disable consent checkbox initially
+    privacyConsent.disabled = true;
+    
+    // Track if privacy policy link was clicked
+    privacyLink.addEventListener('click', function() {
+        privacyPolicyRead = true;
+        privacyConsent.disabled = false;
+        updateSubmitButton();
+    });
+    
+    // Update submit button state
+    function updateSubmitButton() {
+        if (privacyConsent.checked && privacyPolicyRead) {
+            submitBtn.disabled = false;
+        } else {
+            submitBtn.disabled = true;
+        }
+    }
+    
+    // Listen for consent checkbox changes
+    privacyConsent.addEventListener('change', updateSubmitButton);
+    
+    // Show tooltip if user tries to check consent before reading policy
+    privacyConsent.addEventListener('click', function(e) {
+        if (!privacyPolicyRead) {
+            e.preventDefault();
+            alert('Пожалуйста, сначала ознакомьтесь с политикой конфиденциальности');
+        }
+    });
+});
+</script>
 {% endblock %}

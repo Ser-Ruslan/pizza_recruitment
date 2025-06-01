@@ -384,6 +384,36 @@ def application_list(request):
     if vacancy_filter:
         applications = applications.filter(vacancy__id=vacancy_filter)
 
+    # Date filters
+    date_from = request.GET.get('date_from', '')
+    date_to = request.GET.get('date_to', '')
+    date_single = request.GET.get('date_single', '')
+    
+    # Import datetime at the beginning of the date filtering section
+    from datetime import datetime
+    
+    if date_single:
+        # Фильтр по одному дню
+        try:
+            single_date = datetime.strptime(date_single, '%Y-%m-%d').date()
+            applications = applications.filter(applied_at__date=single_date)
+        except ValueError:
+            messages.error(request, 'Неверный формат даты')
+    elif date_from or date_to:
+        # Фильтр по периоду
+        if date_from:
+            try:
+                from_date = datetime.strptime(date_from, '%Y-%m-%d').date()
+                applications = applications.filter(applied_at__date__gte=from_date)
+            except ValueError:
+                messages.error(request, 'Неверный формат даты "от"')
+        if date_to:
+            try:
+                to_date = datetime.strptime(date_to, '%Y-%m-%d').date()
+                applications = applications.filter(applied_at__date__lte=to_date)
+            except ValueError:
+                messages.error(request, 'Неверный формат даты "до"')
+
     # Paginate results
     paginator = Paginator(applications, 20)
     page_number = request.GET.get('page')
@@ -404,6 +434,9 @@ def application_list(request):
         'vacancies': vacancies,
         'selected_status': status_filter,
         'selected_vacancy': vacancy_filter,
+        'selected_date_from': date_from,
+        'selected_date_to': date_to,
+        'selected_date_single': date_single,
         'has_new_quick_applications': has_new_quick_applications,
     }
     return render(request, 'applications/list.html', context)
@@ -739,11 +772,39 @@ def hr_dashboard(request):
                 'avg_score': avg_score,
             })
 
+        # Аналитика по вопросам для JavaScript
+        all_questions_stats = []
+        question_counter = 0
+        for position_type in position_types:
+            test = position_type.test
+            if test:
+                for question in test.questions.all():
+                    question_counter += 1
+                    user_answers = UserAnswer.objects.filter(question=question)
+                    total_answers = user_answers.count()
+                    
+                    if total_answers > 0:
+                        correct_answers = user_answers.filter(selected_answer__is_correct=True).count()
+                        incorrect_answers = total_answers - correct_answers
+                        error_rate = (incorrect_answers * 100 / total_answers) if total_answers > 0 else 0
+                        
+                        all_questions_stats.append({
+                            'question_id': question.id,
+                            'test_title': position_type.title,
+                            'question_number': question_counter,
+                            'error_rate': error_rate,
+                            'total_answers': total_answers
+                        })
+        
+        # Сортируем по сложности
+        all_questions_stats.sort(key=lambda x: x['error_rate'], reverse=True)
+
         test_statistics = {
             'total_attempts': total_attempts,
             'passed_attempts': passed_attempts,
             'success_rate': success_rate,
             'competency_stats': competency_stats,
+            'question_analytics': all_questions_stats,
         }
 
         # === ДАННЫЕ ТРЕНДОВ ===
@@ -1060,22 +1121,62 @@ def quick_apply(request, vacancy_id):
                         message=f"Получен быстрый отклик от {quick_app.full_name} на вакансию {vacancy.title}."
                     )
 
-            # Send welcome email to candidate
+            # Send beautiful welcome email to candidate
             send_mail(
                 'Добро пожаловать в PizzaJobs - Ваш отклик отправлен!',
-                f'''Здравствуйте, {quick_app.full_name}!
-
-Добро пожаловать в PizzaJobs! 
-
-Ваш быстрый отклик на вакансию "{vacancy.title}" успешно отправлен и ожидает рассмотрения HR-менеджера.
-
-Мы свяжемся с вами в ближайшее время для дальнейших шагов.
-
-С уважением,
-Команда PizzaJobs''',
+                '',
                 settings.EMAIL_HOST_USER,
                 [quick_app.email],
                 fail_silently=False,
+                html_message=f'''
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <style>
+                        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+                        .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+                        .header {{ background: linear-gradient(135deg, #2196F3 0%, #21CBF3 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
+                        .content {{ background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }}
+                        .welcome-box {{ background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #2196F3; }}
+                        .status-badge {{ background: #4CAF50; color: white; padding: 8px 16px; border-radius: 20px; display: inline-block; margin: 10px 0; }}
+                        .footer {{ text-align: center; margin-top: 30px; color: #666; font-size: 14px; }}
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="header">
+                            <h1>🍕 Добро пожаловать в PizzaJobs!</h1>
+                            <h2>Ваш отклик отправлен</h2>
+                        </div>
+                        <div class="content">
+                            <p>Здравствуйте, <strong>{quick_app.full_name}</strong>!</p>
+                            
+                            <p>Спасибо за интерес к нашей компании! 🎉</p>
+                            
+                            <div class="welcome-box">
+                                <h3>📝 Информация о вашей заявке:</h3>
+                                <p><strong>Вакансия:</strong> {vacancy.title}</p>
+                                <p><strong>Статус:</strong> <span class="status-badge">✅ Отправлено</span></p>
+                                <p><strong>Дата подачи:</strong> {quick_app.created_at.strftime('%d.%m.%Y в %H:%M')}</p>
+                            </div>
+                            
+                            <p><strong>Что дальше?</strong></p>
+                            <p>Ваш быстрый отклик успешно отправлен и ожидает рассмотрения нашего HR-менеджера. Обычно процесс рассмотрения занимает 1-3 рабочих дня.</p>
+                            
+                            <p>Мы свяжемся с вами в ближайшее время для дальнейших шагов процесса трудоустройства.</p>
+                            
+                            <p>Еще раз спасибо за ваш интерес к работе в нашей команде! 🚀</p>
+                            
+                        </div>
+                        <div class="footer">
+                            <p>С уважением,<br><strong>Команда PizzaJobs</strong></p>
+                            <p><em>Это автоматическое сообщение, отвечать на него не нужно.</em></p>
+                        </div>
+                    </div>
+                </body>
+                </html>
+                '''
             )
 
             messages.success(request, 'Ваш быстрый отклик успешно отправлен. HR-менеджер рассмотрит вашу заявку.')
@@ -1191,48 +1292,121 @@ def convert_quick_application(request, app_id):
         quick_app.user_created = user
         quick_app.save()
 
-        # Send email with credentials and test link
+        # Send beautiful email with credentials and test link
         if position_test and position_test.is_active:
             test_link = request.build_absolute_uri(reverse('take_test_by_token', args=[test_token]))
             send_mail(
                 'Ваша заявка рассмотрена - Создан аккаунт PizzaJobs',
-                f'''Здравствуйте, {quick_app.full_name}!
-
-Ваша быстрая заявка на вакансию "{quick_app.vacancy.title}" была рассмотрена HR-менеджером.
-
-Для вас создан аккаунт на сайте PizzaJobs:
-Логин: {username}
-Пароль: {password}
-
-Для продолжения процесса отбора вам необходимо пройти тест.
-Ссылка для прохождения теста: {test_link}
-
-После успешного прохождения теста ваша заявка будет направлена на дальнейшее рассмотрение.
-
-С уважением,
-Команда PizzaJobs''',
+                '',
                 settings.EMAIL_HOST_USER,
                 [quick_app.email],
                 fail_silently=False,
+                html_message=f'''
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <style>
+                        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+                        .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+                        .header {{ background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
+                        .content {{ background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }}
+                        .credentials {{ background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #4CAF50; }}
+                        .test-button {{ background: #ff9800; color: white; padding: 15px 30px; text-decoration: none; border-radius: 25px; display: inline-block; margin: 20px 0; font-weight: bold; }}
+                        .test-button:hover {{ background: #e68900; color: white; text-decoration: none; }}
+                        .important {{ background: #fff3cd; padding: 15px; border-left: 4px solid #ffc107; margin: 15px 0; }}
+                        .footer {{ text-align: center; margin-top: 30px; color: #666; font-size: 14px; }}
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="header">
+                            <h1>🎉 Заявка принята!</h1>
+                            <h2>Аккаунт создан</h2>
+                        </div>
+                        <div class="content">
+                            <p>Здравствуйте, <strong>{quick_app.full_name}</strong>!</p>
+                            
+                            <p>Отличные новости! Ваша быстрая заявка на вакансию <strong>"{quick_app.vacancy.title}"</strong> была рассмотрена HR-менеджером и принята к дальнейшему рассмотрению.</p>
+                            
+                            <div class="credentials">
+                                <h3>🔑 Данные для входа в систему:</h3>
+                                <p><strong>Логин:</strong> {username}<br>
+                                <strong>Пароль:</strong> {password}</p>
+                                <small><em>Вы сможете изменить пароль после входа в систему</em></small>
+                            </div>
+                            
+                            <div class="important">
+                                <h3>📝 Следующий шаг: Тестирование</h3>
+                                <p>Для продолжения процесса отбора вам необходимо пройти тест, соответствующий вашей позиции. После успешного прохождения теста ваша заявка будет направлена на дальнейшее рассмотрение.</p>
+                            </div>
+                            
+                            <div style="text-align: center;">
+                                <a href="{test_link}" class="test-button">🚀 Пройти тест сейчас</a>
+                            </div>
+                            
+                            <p><strong>Важно:</strong> Ссылка для прохождения теста персональная и действительна только для вас.</p>
+                            
+                        </div>
+                        <div class="footer">
+                            <p>С уважением,<br><strong>Команда PizzaJobs</strong></p>
+                            <p><em>Это автоматическое сообщение, отвечать на него не нужно.</em></p>
+                        </div>
+                    </div>
+                </body>
+                </html>
+                '''
             )
         else:
             send_mail(
                 'Ваша заявка рассмотрена - Создан аккаунт PizzaJobs',
-                f'''Здравствуйте, {quick_app.full_name}!
-
-Ваша быстрая заявка на вакансию "{quick_app.vacancy.title}" была рассмотрена HR-менеджером.
-
-Для вас создан аккаунт на сайте PizzaJobs:
-Логин: {username}
-Пароль: {password}
-
-Теперь вы можете войти в систему и отслеживать статус своей заявки.
-
-С уважением,
-Команда PizzaJobs''',
+                '',
                 settings.EMAIL_HOST_USER,
                 [quick_app.email],
                 fail_silently=False,
+                html_message=f'''
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <style>
+                        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+                        .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+                        .header {{ background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
+                        .content {{ background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }}
+                        .credentials {{ background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #4CAF50; }}
+                        .footer {{ text-align: center; margin-top: 30px; color: #666; font-size: 14px; }}
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="header">
+                            <h1>🎉 Заявка принята!</h1>
+                            <h2>Аккаунт создан</h2>
+                        </div>
+                        <div class="content">
+                            <p>Здравствуйте, <strong>{quick_app.full_name}</strong>!</p>
+                            
+                            <p>Отличные новости! Ваша быстрая заявка на вакансию <strong>"{quick_app.vacancy.title}"</strong> была рассмотрена HR-менеджером и принята.</p>
+                            
+                            <div class="credentials">
+                                <h3>🔑 Данные для входа в систему:</h3>
+                                <p><strong>Логин:</strong> {username}<br>
+                                <strong>Пароль:</strong> {password}</p>
+                                <small><em>Вы сможете изменить пароль после входа в систему</em></small>
+                            </div>
+                            
+                            <p>Теперь вы можете войти в систему и отслеживать статус своей заявки. Мы свяжемся с вами для дальнейших шагов процесса трудоустройства.</p>
+                            
+                        </div>
+                        <div class="footer">
+                            <p>С уважением,<br><strong>Команда PizzaJobs</strong></p>
+                            <p><em>Это автоматическое сообщение, отвечать на него не нужно.</em></p>
+                        </div>
+                    </div>
+                </body>
+                </html>
+                '''
             )
 
         messages.success(request, f'Аккаунт создан для {quick_app.full_name}. Данные: Логин: {username}, Пароль: {password}. Email отправлен.')
@@ -1250,11 +1424,13 @@ def logout_view(request):
 @login_required
 @hr_required
 def select_position_for_test(request):
-    # Получаем все типы позиций, у которых еще нет тестов
-    position_types_without_tests = PositionType.objects.filter(test__isnull=True)
+    # Получаем все типы позиций, у которых нет тестов ИЛИ есть только деактивированные тесты
+    position_types_available = PositionType.objects.filter(
+        Q(test__isnull=True) | Q(test__is_active=False)
+    ).distinct()
 
     context = {
-        'position_types': position_types_without_tests,
+        'position_types': position_types_available,
     }
     return render(request, 'hr/select_position_for_test.html', context)
 
@@ -1262,14 +1438,24 @@ def select_position_for_test(request):
 @hr_required
 def create_test(request, position_type_id):
     position_type = get_object_or_404(PositionType, id=position_type_id)
+    
+    # Проверяем, есть ли активный тест для этой позиции
+    existing_active_test = Test.objects.filter(position_type=position_type, is_active=True).first()
+    if existing_active_test:
+        messages.error(request, f'Для позиции "{position_type.title}" уже существует активный тест. Деактивируйте его перед созданием нового.')
+        return redirect('manage_tests')
 
     if request.method == 'POST':
+        # Деактивируем все старые тесты для этой позиции
+        Test.objects.filter(position_type=position_type).update(is_active=False)
+        
         test = Test.objects.create(
             position_type=position_type,
             title=request.POST['title'],
             description=request.POST['description'],
             time_limit=request.POST['time_limit'],
-            passing_score=request.POST['passing_score']
+            passing_score=request.POST['passing_score'],
+            is_active=True  # Новый тест активен по умолчанию
         )
 
         questions_data = json.loads(request.POST['questions'])
@@ -1286,10 +1472,18 @@ def create_test(request, position_type_id):
                     is_correct=a_data['is_correct']
                 )
 
-        messages.success(request, 'Тест успешно создан')
+        messages.success(request, 'Тест успешно создан и активирован')
         return redirect('manage_tests')
 
-    return render(request, 'hr/create_test.html', {'position_type': position_type})
+    # Проверяем, есть ли деактивированные тесты
+    deactivated_tests = Test.objects.filter(position_type=position_type, is_active=False)
+    
+    context = {
+        'position_type': position_type,
+        'has_deactivated_tests': deactivated_tests.exists(),
+        'deactivated_tests_count': deactivated_tests.count()
+    }
+    return render(request, 'hr/create_test.html', context)
 
 def take_test(request, test_id):
     test = get_object_or_404(Test, id=test_id)
@@ -1439,6 +1633,19 @@ def take_test(request, test_id):
 def toggle_test(request, test_id):
     if request.method == 'POST':
         test = get_object_or_404(Test, id=test_id)
+        
+        # Если пытаемся активировать тест
+        if not test.is_active:
+            # Проверяем, нет ли уже активного теста для этой позиции
+            existing_active_test = Test.objects.filter(
+                position_type=test.position_type, 
+                is_active=True
+            ).exclude(id=test_id).first()
+            
+            if existing_active_test:
+                messages.error(request, f'Невозможно активировать тест. Для позиции "{test.position_type.title}" уже активен другой тест. Сначала деактивируйте существующий тест.')
+                return redirect('manage_tests')
+        
         test.is_active = not test.is_active
         test.save()
         status = "активирован" if test.is_active else "деактивирован"
@@ -1610,21 +1817,21 @@ def take_test_by_token(request, token):
         attempt.save()
 
         if attempt.passed:
-            # Update quick application status
-            quick_app.status = ApplicationStatus.ACCEPTED
-            quick_app.save()
-
             # Get user's resume (should exist after convert_quick_application)
             user_resume = Resume.objects.filter(user=request.user, is_active=True).first()
 
-            # Create regular application
-            regular_app = Application.objects.create(
-                vacancy=quick_app.vacancy,
-                user=request.user,
-                resume=user_resume,
-                cover_letter=quick_app.cover_letter,
-                status=ApplicationStatus.NEW
-            )
+            # Create regular application from quick application
+            with transaction.atomic():
+                regular_app = Application.objects.create(
+                    vacancy=quick_app.vacancy,
+                    user=request.user,
+                    resume=user_resume,
+                    cover_letter=quick_app.cover_letter or f"Заявка создана после прохождения теста для быстрого отклика от {quick_app.full_name}",
+                    status=ApplicationStatus.NEW
+                )
+                
+                # Mark as converted from quick application to avoid duplicate notifications
+                regular_app._from_quick_application = True
 
             # Calculate time spent on test
             time_spent = attempt.end_time - attempt.start_time
@@ -1632,28 +1839,132 @@ def take_test_by_token(request, token):
             seconds_spent = int(time_spent.total_seconds() % 60)
             time_str = f"{minutes_spent} мин {seconds_spent} сек"
 
+            # Send beautiful email to candidate
+            send_mail(
+                'Поздравляем! Тест успешно пройден - PizzaJobs',
+                '',
+                settings.EMAIL_HOST_USER,
+                [request.user.email],
+                fail_silently=False,
+                html_message=f'''
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <style>
+                        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+                        .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+                        .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
+                        .content {{ background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }}
+                        .success-badge {{ background: #28a745; color: white; padding: 8px 16px; border-radius: 20px; display: inline-block; margin: 10px 0; }}
+                        .highlight {{ background: #e3f2fd; padding: 15px; border-left: 4px solid #2196f3; margin: 15px 0; }}
+                        .footer {{ text-align: center; margin-top: 30px; color: #666; font-size: 14px; }}
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="header">
+                            <h1>🎉 Поздравляем!</h1>
+                            <h2>Тест успешно пройден</h2>
+                        </div>
+                        <div class="content">
+                            <p>Здравствуйте, <strong>{request.user.get_full_name()}</strong>!</p>
+                            
+                            <div class="success-badge">✅ Тест пройден успешно</div>
+                            
+                            <p>Отличные новости! Вы успешно прошли тестирование для вакансии <strong>"{quick_app.vacancy.title}"</strong>.</p>
+                            
+                            <div class="highlight">
+                                <h3>Результаты тестирования:</h3>
+                                <ul>
+                                    <li><strong>Ваш результат:</strong> {attempt.score:.1f}%</li>
+                                    <li><strong>Проходной балл:</strong> {test.passing_score}%</li>
+                                    <li><strong>Время прохождения:</strong> {time_str}</li>
+                                    <li><strong>Дата:</strong> {attempt.end_time.strftime('%d.%m.%Y в %H:%M')}</li>
+                                </ul>
+                            </div>
+                            
+                            <p><strong>Что дальше?</strong></p>
+                            <p>Ваша заявка была автоматически преобразована в обычную заявку и передана нашим HR-специалистам для дальнейшего рассмотрения. Мы свяжемся с вами в ближайшее время для обсуждения следующих этапов процесса трудоустройства.</p>
+                            
+                            <p>Спасибо за интерес к нашей компании!</p>
+                            
+                        </div>
+                        <div class="footer">
+                            <p>С уважением,<br><strong>Команда PizzaJobs</strong></p>
+                            <p><em>Это автоматическое сообщение, отвечать на него не нужно.</em></p>
+                        </div>
+                    </div>
+                </body>
+                </html>
+                '''
+            )
+
             # Notify HR managers about test completion and application conversion
             hr_users = User.objects.filter(profile__role=UserRole.HR_MANAGER)
             for hr in hr_users:
                 send_mail(
                     f'Быстрая заявка преобразована в обычную - Тест пройден',
-                    f'''Быстрая заявка от {quick_app.full_name} на вакансию "{quick_app.vacancy.title}" была преобразована в обычную заявку.
-
-Кандидат успешно прошел тест:
-- Результат: {attempt.score:.1f}% (требовалось: {test.passing_score}%)
-- Время прохождения: {time_str}
-- Дата прохождения: {attempt.end_time.strftime('%d.%m.%Y в %H:%M')}
-
-Заявка готова к дальнейшему рассмотрению.
-
-С уважением,
-Система PizzaJobs''',
+                    '',
                     settings.EMAIL_HOST_USER,
                     [hr.email],
                     fail_silently=False,
+                    html_message=f'''
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <meta charset="UTF-8">
+                        <style>
+                            body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+                            .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+                            .header {{ background: linear-gradient(135deg, #ff9a56 0%, #ff6b95 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
+                            .content {{ background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }}
+                            .info-box {{ background: #e8f5e8; padding: 15px; border-left: 4px solid #4caf50; margin: 15px 0; }}
+                            .stats {{ background: white; padding: 20px; border-radius: 8px; margin: 15px 0; }}
+                            .footer {{ text-align: center; margin-top: 30px; color: #666; font-size: 14px; }}
+                        </style>
+                    </head>
+                    <body>
+                        <div class="container">
+                            <div class="header">
+                                <h1>📋 Уведомление для HR</h1>
+                                <h2>Быстрая заявка преобразована</h2>
+                            </div>
+                            <div class="content">
+                                <p>Здравствуйте!</p>
+                                
+                                <div class="info-box">
+                                    <h3>🔄 Заявка преобразована</h3>
+                                    <p>Быстрая заявка от <strong>{quick_app.full_name}</strong> на вакансию <strong>"{quick_app.vacancy.title}"</strong> была успешно преобразована в обычную заявку.</p>
+                                </div>
+                                
+                                <div class="stats">
+                                    <h3>📊 Результаты тестирования:</h3>
+                                    <ul>
+                                        <li><strong>Кандидат:</strong> {request.user.get_full_name()} ({request.user.email})</li>
+                                        <li><strong>Результат:</strong> {attempt.score:.1f}% (требовалось: {test.passing_score}%)</li>
+                                        <li><strong>Время прохождения:</strong> {time_str}</li>
+                                        <li><strong>Дата прохождения:</strong> {attempt.end_time.strftime('%d.%m.%Y в %H:%M')}</li>
+                                        <li><strong>Статус заявки:</strong> Готова к рассмотрению</li>
+                                    </ul>
+                                </div>
+                                
+                                <p><strong>Заявка готова к дальнейшему рассмотрению в системе.</strong></p>
+                                
+                            </div>
+                            <div class="footer">
+                                <p>С уважением,<br><strong>Система PizzaJobs</strong></p>
+                            </div>
+                        </div>
+                    </body>
+                    </html>
+                    '''
                 )
 
-            messages.success(request, f'Поздравляем! Вы успешно прошли тест с результатом {attempt.score:.1f}%. Ваша заявка принята и направлена на рассмотрение.')
+            # Delete the quick application after successful conversion
+            quick_app.delete()
+
+            messages.success(request, f'Поздравляем! Вы успешно прошли тест с результатом {attempt.score:.1f}%. Ваша заявка принята и направлена на рассмотрение. Мы свяжемся с вами для дальнейшего трудоустройства.')
             return redirect('home')
         else:
             quick_app.status = ApplicationStatus.REJECTED
@@ -1725,11 +2036,14 @@ def test_statistics(request):
 
     # Создаем общую статистику по всем вопросам для JavaScript
     all_questions_stats = []
+    question_counter = 0
     for test_data in statistics['tests_data']:
         for q_stat in test_data['question_stats']:
+            question_counter += 1
             all_questions_stats.append({
+                'question_id': q_stat['question'].id,
                 'test_title': test_data['test'].position_type.title,
-                'question_text': q_stat['question'].text[:50] + '...' if len(q_stat['question'].text) > 50 else q_stat['question'].text,
+                'question_number': question_counter,
                 'error_rate': q_stat['error_rate'],
                 'total_answers': q_stat['total_answers']
             })
@@ -1836,6 +2150,81 @@ def privacy_policy(request):
         'current_date': timezone.now()
     }
     return render(request, 'legal/privacy_policy.html', context)
+
+@login_required
+@hr_required
+def question_statistics(request, question_id):
+    question = get_object_or_404(Question, id=question_id)
+    test = question.test
+    
+    # Получаем все ответы на этот вопрос
+    user_answers = UserAnswer.objects.filter(question=question).select_related(
+        'selected_answer', 'attempt__user'
+    )
+    
+    total_answers = user_answers.count()
+    
+    if total_answers == 0:
+        context = {
+            'question': question,
+            'test': test,
+            'total_answers': 0,
+            'answer_stats': [],
+            'recent_attempts': [],
+        }
+        return render(request, 'hr/question_detail.html', context)
+    
+    # Статистика по вариантам ответов
+    answer_stats = []
+    for answer in question.answers.all():
+        answer_count = user_answers.filter(selected_answer=answer).count()
+        percentage = (answer_count * 100 / total_answers) if total_answers > 0 else 0
+        
+        answer_stats.append({
+            'answer': answer,
+            'count': answer_count,
+            'percentage': percentage,
+            'is_correct': answer.is_correct
+        })
+    
+    # Сортируем по количеству выборов
+    answer_stats.sort(key=lambda x: x['count'], reverse=True)
+    
+    # Общая статистика
+    correct_answers = user_answers.filter(selected_answer__is_correct=True).count()
+    incorrect_answers = total_answers - correct_answers
+    error_rate = (incorrect_answers * 100 / total_answers) if total_answers > 0 else 0
+    success_rate = (correct_answers * 100 / total_answers) if total_answers > 0 else 0
+    
+    # Определяем уровень сложности
+    if error_rate > 50:
+        difficulty_level = 'Высокая'
+        difficulty_class = 'danger'
+    elif error_rate > 30:
+        difficulty_level = 'Средняя'
+        difficulty_class = 'warning'
+    else:
+        difficulty_level = 'Низкая'
+        difficulty_class = 'success'
+    
+    # Последние попытки ответа на вопрос
+    recent_attempts = user_answers.order_by('-attempt__end_time')[:10]
+    
+    context = {
+        'question': question,
+        'test': test,
+        'total_answers': total_answers,
+        'correct_answers': correct_answers,
+        'incorrect_answers': incorrect_answers,
+        'error_rate': error_rate,
+        'success_rate': success_rate,
+        'difficulty_level': difficulty_level,
+        'difficulty_class': difficulty_class,
+        'answer_stats': answer_stats,
+        'recent_attempts': recent_attempts,
+    }
+    
+    return render(request, 'hr/question_detail.html', context)
 
 @login_required
 @hr_required
@@ -1995,3 +2384,52 @@ def apply_candidate_to_vacancy(request):
         'form': form,
     }
     return render(request, 'hr/apply_candidate.html', context)
+
+@login_required
+@hr_required
+def delete_candidate(request, candidate_id):
+    candidate = get_object_or_404(User, id=candidate_id, profile__role=UserRole.CANDIDATE)
+    
+    if request.method == 'POST':
+        candidate_name = candidate.get_full_name()
+        candidate_email = candidate.email
+        
+        # Delete all related data
+        with transaction.atomic():
+            # Delete applications and related data
+            Application.objects.filter(user=candidate).delete()
+            
+            # Delete quick applications if user was created from them
+            QuickApplication.objects.filter(user_created=candidate).delete()
+            
+            # Delete resumes
+            Resume.objects.filter(user=candidate).delete()
+            
+            # Delete test attempts
+            TestAttempt.objects.filter(user=candidate).delete()
+            
+            # Delete notifications
+            Notification.objects.filter(user=candidate).delete()
+            
+            # Delete profile
+            if hasattr(candidate, 'profile'):
+                candidate.profile.delete()
+            
+            # Finally delete the user
+            candidate.delete()
+        
+        messages.success(request, f'Кандидат {candidate_name} ({candidate_email}) успешно удален вместе со всеми связанными данными.')
+        return redirect('manage_candidates')
+    
+    # Get candidate statistics for confirmation
+    applications_count = Application.objects.filter(user=candidate).count()
+    test_attempts_count = TestAttempt.objects.filter(user=candidate).count()
+    resumes_count = Resume.objects.filter(user=candidate).count()
+    
+    context = {
+        'candidate': candidate,
+        'applications_count': applications_count,
+        'test_attempts_count': test_attempts_count,
+        'resumes_count': resumes_count,
+    }
+    return render(request, 'hr/delete_candidate.html', context)

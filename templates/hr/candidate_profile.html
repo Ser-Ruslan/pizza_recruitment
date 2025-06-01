@@ -7,9 +7,17 @@
 <div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1>Профиль кандидата</h1>
-        <a href="{% url 'manage_candidates' %}" class="btn btn-outline-secondary">
-            <i class="fas fa-arrow-left me-2"></i>Назад к списку
-        </a>
+        <div>
+            <a href="{% url 'apply_candidate' %}?candidate={{ candidate.id }}" class="btn btn-primary me-2">
+                <i class="fas fa-paper-plane me-2"></i>Подать заявку
+            </a>
+            <a href="{% url 'delete_candidate' candidate.id %}" class="btn btn-danger me-2">
+                <i class="fas fa-trash me-2"></i>Удалить
+            </a>
+            <a href="{% url 'manage_candidates' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Назад к списку
+            </a>
+        </div>
     </div>
 
     <div class="row">

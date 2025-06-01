@@ -71,6 +71,7 @@ path('vacancies/<int:vacancy_id>/quick-apply/', views.quick_apply, name='quick_a
     path('hr/tests/<int:test_id>/delete/', views.delete_test, name='delete_test'),
     path('hr/tests/<int:test_id>/toggle/', views.toggle_test, name='toggle_test'),
     path('hr/test-statistics/', views.test_statistics, name='test_statistics'),
+    path('hr/question-statistics/<int:question_id>/', views.question_statistics, name='question_statistics'),
     path('test/<int:test_id>/take/', views.take_test, name='take_test'),
     path('test/token/<str:token>/', views.take_test_by_token, name='take_test_by_token'),
     path('candidate/tests/', views.candidate_tests, name='candidate_tests'),
@@ -81,6 +82,7 @@ path('vacancies/<int:vacancy_id>/quick-apply/', views.quick_apply, name='quick_a
     # Candidate Management URLs
     path('hr/candidates/', views.manage_candidates, name='manage_candidates'),
     path('hr/candidates/create/', views.create_candidate, name='create_candidate'),
-    path('hr/candidates/apply/', views.apply_candidate_to_vacancy, name='apply_candidate'),
     path('hr/candidates/<int:candidate_id>/profile/', views.view_candidate_profile, name='view_candidate_profile'),
+    path('hr/candidates/<int:candidate_id>/delete/', views.delete_candidate, name='delete_candidate'),
+    path('hr/candidates/apply/', views.apply_candidate_to_vacancy, name='apply_candidate'),
 ]

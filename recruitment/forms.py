@@ -57,6 +57,11 @@ class UserRegisterForm(UserCreationForm):
     first_name = forms.CharField(label=_('Имя'), required=True)
     last_name = forms.CharField(label=_('Фамилия'), required=True)
     phone = forms.CharField(label=_('Телефон'), required=True)
+    privacy_consent = forms.BooleanField(
+        required=True,
+        label=_('Я согласен на обработку персональных данных'),
+        help_text=_('Для регистрации необходимо согласие на обработку персональных данных')
+    )
 
     def clean_email(self):
         email = self.cleaned_data.get('email')

@@ -1,0 +1,221 @@
+
+{% extends 'base.html' %}
+
+{% block title %}Статистика вопроса - {{ test.title }} - PizzaJobs{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'hr_dashboard' %}">HR Панель</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'test_statistics' %}">Статистика тестов</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">{{ test.title }} - Вопрос</li>
+                </ol>
+            </nav>
+            
+            <div class="d-flex justify-content-between align-items-center">
+                <h2><i class="fas fa-question-circle me-2 text-primary"></i>Детальная статистика вопроса</h2>
+                <a href="{% url 'test_statistics' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Назад к статистике
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Информация о тесте и вопросе -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-clipboard-check me-2"></i>{{ test.title }}</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <h6 class="text-muted mb-2">Текст вопроса:</h6>
+                            <p class="fw-bold fs-5">{{ question.text }}</p>
+                            <p class="text-muted"><strong>Баллы за вопрос:</strong> {{ question.points }}</p>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-center">
+                                <h6 class="text-muted">Уровень сложности</h6>
+                                <span class="badge bg-{{ difficulty_class }} fs-6 p-2">{{ difficulty_level }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if total_answers > 0 %}
+        <!-- Общая статистика -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card shadow-sm border-primary">
+                    <div class="card-body text-center">
+                        <div class="text-primary">
+                            <i class="fas fa-users fa-2x mb-2"></i>
+                        </div>
+                        <h4 class="fw-bold">{{ total_answers }}</h4>
+                        <p class="text-muted mb-0">Всего ответов</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card shadow-sm border-success">
+                    <div class="card-body text-center">
+                        <div class="text-success">
+                            <i class="fas fa-check-circle fa-2x mb-2"></i>
+                        </div>
+                        <h4 class="fw-bold">{{ correct_answers }}</h4>
+                        <p class="text-muted mb-0">Правильных</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card shadow-sm border-danger">
+                    <div class="card-body text-center">
+                        <div class="text-danger">
+                            <i class="fas fa-times-circle fa-2x mb-2"></i>
+                        </div>
+                        <h4 class="fw-bold">{{ incorrect_answers }}</h4>
+                        <p class="text-muted mb-0">Неправильных</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card shadow-sm border-info">
+                    <div class="card-body text-center">
+                        <div class="text-info">
+                            <i class="fas fa-percentage fa-2x mb-2"></i>
+                        </div>
+                        <h4 class="fw-bold">{{ success_rate|floatformat:1 }}%</h4>
+                        <p class="text-muted mb-0">Успешность</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Статистика по вариантам ответов -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card shadow">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-chart-pie me-2"></i>Распределение ответов</h5>
+                    </div>
+                    <div class="card-body">
+                        {% for stat in answer_stats %}
+                            <div class="mb-3 p-3 border rounded {% if stat.is_correct %}border-success bg-light-success{% else %}border-secondary{% endif %}">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <div class="flex-grow-1">
+                                        <div class="d-flex align-items-center">
+                                            {% if stat.is_correct %}
+                                                <i class="fas fa-check-circle text-success me-2"></i>
+                                                <span class="badge bg-success me-2">Правильный</span>
+                                            {% else %}
+                                                <i class="fas fa-times-circle text-danger me-2"></i>
+                                                <span class="badge bg-secondary me-2">Неправильный</span>
+                                            {% endif %}
+                                            <strong>{{ stat.answer.text }}</strong>
+                                        </div>
+                                    </div>
+                                    <div class="text-end">
+                                        <span class="badge bg-primary fs-6">{{ stat.count }} выборов</span>
+                                    </div>
+                                </div>
+                                <div class="progress" style="height: 25px;">
+                                    <div class="progress-bar {% if stat.is_correct %}bg-success{% else %}bg-secondary{% endif %}" 
+                                         role="progressbar" 
+                                         style="width: {{ stat.percentage }}%;"
+                                         aria-valuenow="{{ stat.percentage }}" 
+                                         aria-valuemin="0" 
+                                         aria-valuemax="100">
+                                        {{ stat.percentage|floatformat:1 }}%
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Последние попытки -->
+        {% if recent_attempts %}
+            <div class="row">
+                <div class="col-12">
+                    <div class="card shadow">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="fas fa-history me-2"></i>Последние ответы ({{ recent_attempts.count }})</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Кандидат</th>
+                                            <th>Выбранный ответ</th>
+                                            <th>Результат</th>
+                                            <th>Дата</th>
+                                            <th>Общий балл теста</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for attempt in recent_attempts %}
+                                            <tr>
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        <div>
+                                                            <div class="fw-bold">{{ attempt.attempt.user.get_full_name|default:attempt.attempt.user.username }}</div>
+                                                            <small class="text-muted">{{ attempt.attempt.user.email }}</small>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>{{ attempt.selected_answer.text|truncatechars:50 }}</td>
+                                                <td>
+                                                    {% if attempt.selected_answer.is_correct %}
+                                                        <span class="badge bg-success">
+                                                            <i class="fas fa-check me-1"></i>Правильно
+                                                        </span>
+                                                    {% else %}
+                                                        <span class="badge bg-danger">
+                                                            <i class="fas fa-times me-1"></i>Неправильно
+                                                        </span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    <small>{{ attempt.attempt.end_time|date:"d.m.Y H:i" }}</small>
+                                                </td>
+                                                <td>
+                                                    <span class="badge {% if attempt.attempt.passed %}bg-success{% else %}bg-danger{% endif %}">
+                                                        {{ attempt.attempt.score|default:"0" }}%
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+
+    {% else %}
+        <!-- Нет данных -->
+        <div class="row">
+            <div class="col-12">
+                <div class="alert alert-info text-center">
+                    <i class="fas fa-info-circle fa-3x mb-3"></i>
+                    <h4>Нет данных для анализа</h4>
+                    <p>На этот вопрос пока никто не отвечал.</p>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

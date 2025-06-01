@@ -55,7 +55,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
-                'recruitment.context_processors.notifications_context',
+                'recruitment.context_processors.user_context',
             ],
         },
     },
@@ -138,10 +138,8 @@ MAX_RESUME_SIZE = 5 * 1024 * 1024  # 5MB
 
 # CSRF Settings
 CSRF_TRUSTED_ORIGINS = [
-    'https://*.replit.app',
-    'https://*.replit.dev',
-    'https://*.repl.co',
-    'https://*.replit.dev:3000'
+    'https://b68a2e4f-1e12-4575-b152-1396d429bb98-00-2euwxxbt6kxz9.spock.replit.dev',
+    'https://b68a2e4f-1e12-4575-b152-1396d429bb98-00-2euwxxbt6kxz9.spock.replit.dev:3000',
 ]
 
 # Email settings

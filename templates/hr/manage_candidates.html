@@ -168,6 +168,10 @@
                                                         </a></li>
                                                     {% endif %}
                                                 {% endif %}
+                                                <li><hr class="dropdown-divider"></li>
+                                                <li><a class="dropdown-item text-danger" href="{% url 'delete_candidate' candidate.id %}">
+                                                    <i class="fas fa-trash me-2"></i>Удалить кандидата
+                                                </a></li>
                                             </ul>
                                         </div>
                                     </td>

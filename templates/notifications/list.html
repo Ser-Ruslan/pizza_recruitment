@@ -24,37 +24,51 @@
             {% if page_obj %}
                 <div class="list-group">
                     {% for notification in page_obj %}
-                        <div class="list-group-item list-group-item-action
-                                    {% if not notification.read %}fw-bold bg-light{% else %}bg-white text-muted{% endif %}">
-                            <div class="d-flex w-100 justify-content-between align-items-center">
-                                <h5 class="mb-1">
+                        <div class="list-group-item list-group-item-action border-start-4 
                                     {% if not notification.read %}
-                                        <span class="badge rounded-pill bg-danger me-2">Новое</span>
-                                    {% endif %}
-                                    {{ notification.title }}
-                                </h5>
-                                <small class="text-muted">
-                                    {{ notification.created_at|date:"d.m.Y, H:i" }}
-                                </small>
-                            </div>
-                            <p class="mb-1">{{ notification.message }}</p>
-                            <div class="d-flex justify-content-end gap-2">
-                                {% if not notification.read %}
-                                    <form method="post" action="{% url 'notifications' %}" class="d-inline">
-                                        {% csrf_token %}
-                                        <button type="submit" name="mark_read" value="{{ notification.id }}"
-                                                class="btn btn-sm btn-outline-secondary">
-                                            <i class="fas fa-check me-1"></i>Отметить как прочитанное
-                                        </button>
-                                    </form>
-                                {% endif %}
-                                <form method="post" action="{% url 'notifications' %}" class="d-inline">
-                                    {% csrf_token %}
-                                    <button type="submit" name="delete" value="{{ notification.id }}"
-                                            class="btn btn-sm btn-outline-danger">
-                                        <i class="fas fa-trash me-1"></i>Удалить
-                                    </button>
-                                </form>
+                                        border-primary bg-gradient bg-light fw-bold
+                                    {% else %}
+                                        border-secondary bg-white text-muted
+                                    {% endif %} 
+                                    notification-item shadow-sm mb-2 rounded">
+                            <div class="d-flex w-100 justify-content-between align-items-start">
+                                <div class="flex-grow-1">
+                                    <div class="d-flex align-items-center mb-2">
+                                        {% if not notification.read %}
+                                            <i class="fas fa-bell text-primary me-2"></i>
+                                            <span class="badge bg-primary me-2 pulse">Новое</span>
+                                        {% else %}
+                                            <i class="fas fa-bell-slash text-muted me-2"></i>
+                                            <span class="badge bg-secondary me-2">Прочитано</span>
+                                        {% endif %}
+                                        <h6 class="mb-0 notification-title">{{ notification.title }}</h6>
+                                    </div>
+                                    <p class="mb-2 notification-message">{{ notification.message }}</p>
+                                </div>
+                                <div class="text-end">
+                                    <small class="text-muted d-block mb-2">
+                                        <i class="fas fa-clock me-1"></i>{{ notification.created_at|date:"d.m.Y, H:i" }}
+                                    </small>
+                                    <div class="btn-group" role="group">
+                                        {% if not notification.read %}
+                                            <form method="post" action="{% url 'notifications' %}" class="d-inline">
+                                                {% csrf_token %}
+                                                <button type="submit" name="mark_read" value="{{ notification.id }}"
+                                                        class="btn btn-sm btn-outline-success" title="Отметить как прочитанное">
+                                                    <i class="fas fa-check"></i>
+                                                </button>
+                                            </form>
+                                        {% endif %}
+                                        <form method="post" action="{% url 'notifications' %}" class="d-inline">
+                                            {% csrf_token %}
+                                            <button type="submit" name="delete" value="{{ notification.id }}"
+                                                    class="btn btn-sm btn-outline-danger" title="Удалить"
+                                                    onclick="return confirm('Удалить уведомление?')">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     {% endfor %}

@@ -372,8 +372,10 @@ document.addEventListener('DOMContentLoaded', function() {
         {
             "test_title": "{{ item.test_title|escapejs }}",
             "question_text": "{{ item.question_text|escapejs }}",
+            "question_number": {{ forloop.counter }},
             "error_rate": parseFloat("{{ item.error_rate|floatformat:2 }}"),
-            "total_answers": parseInt("{{ item.total_answers }}")
+            "total_answers": parseInt("{{ item.total_answers }}"),
+            "question_id": {{ item.question_id }}
         }{% if not forloop.last %},{% endif %}
         {% endfor %}
     ];
@@ -384,9 +386,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const topQuestions = questionAnalytics.slice(0, 12);
 
     if(questionAnalytics.length > 0){
-        topQuestions.forEach(function(item) {
-            // Не обрезаем текст для меток диаграммы
-            questionLabels.push(item.test_title + ': ' + item.question_text);
+        topQuestions.forEach(function(item, index) {
+            // Отображаем название теста + номер вопроса
+            questionLabels.push(item.test_title + ' - Вопрос #' + (index + 1));
             errorRates.push(item.error_rate);
         });
 
@@ -417,6 +419,16 @@ document.addEventListener('DOMContentLoaded', function() {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                onClick: function(event, elements) {
+                    if (elements.length > 0) {
+                        const index = elements[0].index;
+                        const questionId = topQuestions[index].question_id;
+                        window.location.href = `/hr/question-statistics/${questionId}/`;
+                    }
+                },
+                onHover: function(event, elements) {
+                    event.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
+                },
                 scales: {
                     y: {
                         beginAtZero: true,
@@ -465,9 +477,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         displayColors: false,
                         callbacks: {
                             title: function(context) {
-                                // Показываем полный текст вопроса в тултипе
+                                // Показываем название теста + номер вопроса
                                 const index = context[0].dataIndex;
-                                return topQuestions[index].question_text;
+                                return topQuestions[index].test_title + ' - Вопрос #' + (index + 1);
                             },
                             label: function(context) {
                                 return 'Процент ошибок: ' + context.parsed.y.toFixed(1) + '%';
@@ -546,16 +558,16 @@ document.addEventListener('DOMContentLoaded', function() {
     let difficultQuestionsHTML = '';
     sortedQuestions.forEach((item, index) => {
         const badgeClass = item.error_rate > 50 ? 'bg-danger' : item.error_rate > 30 ? 'bg-warning' : 'bg-success';
-        // Показываем полный текст вопроса без сокращений
-        const questionId = `question-${index}`;
-        
+
         difficultQuestionsHTML += `
             <div class="mb-4 p-4 border rounded shadow-sm">
                 <div class="d-flex justify-content-between align-items-start">
                     <div class="flex-grow-1 me-3">
-                        <div class="text-muted mb-3" style="font-size: 1.1rem; font-weight: 600;">#${index + 1} ${item.test_title}</div>
+                        <div class="text-muted mb-2" style="font-size: 1.0rem; font-weight: 500;">#${index + 1}</div>
                         <div class="fw-bold mt-1" style="font-size: 1.3rem; line-height: 1.6; color: #2c3e50; word-wrap: break-word; overflow-wrap: break-word;">
-                            ${item.question_text}
+                            <a href="/hr/question-statistics/${item.question_id}/" class="text-decoration-none text-primary" style="color: #2c3e50 !important;">
+                                ${item.test_title} - Вопрос #${index + 1}
+                            </a>
                         </div>
                         <div class="text-muted mt-3" style="font-size: 1.1rem; font-weight: 500;">
                             <i class="fas fa-users me-2"></i>${item.total_answers} ответов
@@ -581,7 +593,7 @@ function toggleQuestion(questionId) {
     const shortElement = document.getElementById(questionId + '-short');
     const fullElement = document.getElementById(questionId + '-full');
     const button = event.target.closest('button');
-    
+
     if (fullElement.style.display === 'none') {
         shortElement.style.display = 'none';
         fullElement.style.display = 'inline';

@@ -1,44 +1,64 @@
 {% extends 'base.html' %}
 
+{% block title %}Создать тест для {{ position_type.title }} – PizzaJobs{% endblock %}
+
 {% block content %}
-<div class="container mt-4">
-    <h2>Создать тест для позиции "{{ position_type.title }}"</h2>
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            {% if has_deactivated_tests %}
+                <div class="alert alert-info mb-4">
+                    <h5><i class="fas fa-info-circle me-2"></i>Информация</h5>
+                    <p>Для позиции <strong>"{{ position_type.title }}"</strong> уже существует {{ deactivated_tests_count }} деактивированн{% if deactivated_tests_count == 1 %}ый тест{% else %}ых тест{% if deactivated_tests_count < 5 %}а{% else %}ов{% endif %}{% endif %}.</p>
+                    <p>Создание нового теста автоматически деактивирует все предыдущие тесты для этой позиции.</p>
+                </div>
+            {% endif %}
 
-    <form id="testForm" method="POST">
-        {% csrf_token %}
-        <div class="mb-3">
-            <label class="form-label">Название теста</label>
-            <input type="text" name="title" class="form-control" required>
+            <div class="card shadow">
+                <div class="card-header">
+                    <h3>Создать тест для позиции: {{ position_type.title }}</h3>
+                </div>
+
+                <div class="card-body">
+                    <form id="testForm" method="POST">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label class="form-label">Название теста</label>
+                            <input type="text" name="title" class="form-control" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Описание теста</label>
+                            <textarea name="description" class="form-control" rows="3" required></textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Ограничение по времени (в минутах)</label>
+                            <input type="number" name="time_limit" class="form-control" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Проходной балл (%)</label>
+                            <input type="number" name="passing_score" class="form-control" required min="0" max="100" value="70">
+                        </div>
+
+                        <div id="questions">
+                            <!-- Questions will be added here dynamically -->
+                        </div>
+
+                        <button type="button" class="btn btn-secondary mb-3" onclick="addQuestion()">
+                            <i class="fas fa-plus"></i> Добавить вопрос
+                        </button>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'manage_tests' %}" class="btn btn-secondary">Отмена</a>
+                            <button type="submit" class="btn btn-primary">Создать тест</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
-
-        <div class="mb-3">
-            <label class="form-label">Описание теста</label>
-            <textarea name="description" class="form-control" rows="3" required></textarea>
-        </div>
-
-        <div class="mb-3">
-            <label class="form-label">Ограничение по времени (в минутах)</label>
-            <input type="number" name="time_limit" class="form-control" required>
-        </div>
-
-        <div class="mb-3">
-            <label class="form-label">Проходной балл (%)</label>
-            <input type="number" name="passing_score" class="form-control" required min="0" max="100" value="70">
-        </div>
-
-        <div id="questions">
-            <!-- Questions will be added here dynamically -->
-        </div>
-
-        <button type="button" class="btn btn-secondary mb-3" onclick="addQuestion()">
-            <i class="fas fa-plus"></i> Добавить вопрос
-        </button>
-
-        <div class="d-flex justify-content-between">
-            <a href="{% url 'manage_tests' %}" class="btn btn-secondary">Отмена</a>
-            <button type="submit" class="btn btn-primary">Создать тест</button>
-        </div>
-    </form>
+    </div>
 </div>
 
 <script>

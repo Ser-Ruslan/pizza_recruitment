@@ -40,6 +40,24 @@
                         </select>
                     </div>
                 {% endif %}
+                 <div class="col-md-4">
+                    <label class="form-label">Фильтр по дате</label>
+                    <div class="row g-2">
+                        <div class="col-12">
+                            <input type="date" class="form-control form-control-sm" id="date_single" name="date_single" 
+                                   value="{{ selected_date_single }}" placeholder="Один день" title="Конкретная дата">
+                        </div>
+                        <div class="col-6">
+                            <input type="date" class="form-control form-control-sm" id="date_from" name="date_from" 
+                                   value="{{ selected_date_from }}" placeholder="От" title="Дата от">
+                        </div>
+                        <div class="col-6">
+                            <input type="date" class="form-control form-control-sm" id="date_to" name="date_to" 
+                                   value="{{ selected_date_to }}" placeholder="До" title="Дата до">
+                        </div>
+                    </div>
+                    <small class="text-muted">Выберите один день или период</small>
+                </div>
 
                 <div class="col-12">
                     <button type="submit" class="btn btn-primary">Применить фильтры</button>
@@ -68,6 +86,27 @@
     <!-- Список заявок -->
     <div class="card shadow">
         <div class="card-body">
+            <!-- Отображение примененных фильтров -->
+            {% if selected_status or selected_vacancy or selected_date_single or selected_date_from or selected_date_to %}
+                <div class="alert alert-info">
+                    <strong>Применены фильтры:</strong>
+                    {% if selected_status %}
+                        Статус: {{ selected_status|title }}
+                    {% endif %}
+                    {% if selected_vacancy %}
+                        {% if selected_status %} | {% endif %}
+                        Вакансия: {% for vacancy in vacancies %}{% if vacancy.id|stringformat:"i" == selected_vacancy %}{{ vacancy.title }}{% endif %}{% endfor %}
+                    {% endif %}
+                    {% if selected_date_single %}
+                        {% if selected_status or selected_vacancy %} | {% endif %}
+                        Дата: {{ selected_date_single }}
+                    {% endif %}
+                    {% if selected_date_from or selected_date_to %}
+                        {% if selected_status or selected_vacancy or selected_date_single %} | {% endif %}
+                        Период: {% if selected_date_from %}от {{ selected_date_from }}{% endif %}{% if selected_date_to %} до {{ selected_date_to }}{% endif %}
+                    {% endif %}
+                </div>
+            {% endif %}
             {% if page_obj %}
                 <div class="table-responsive">
                     <table class="table table-hover align-middle">
@@ -133,10 +172,10 @@
                         <ul class="pagination justify-content-center">
                             {% if page_obj.has_previous %}
                                 <li class="page-item">
-                                    <a class="page-link" href="?page=1{% if selected_status %}&status={{ selected_status }}{% endif %}{% if selected_vacancy %}&vacancy={{ selected_vacancy }}{% endif %}">Первая</a>
+                                    <a class="page-link" href="?page=1{% if selected_status %}&status={{ selected_status }}{% endif %}{% if selected_vacancy %}&vacancy={{ selected_vacancy }}{% endif %}{% if selected_date_single %}&date_single={{ selected_date_single }}{% endif %}{% if selected_date_from %}&date_from={{ selected_date_from }}{% endif %}{% if selected_date_to %}&date_to={{ selected_date_to }}{% endif %}">Первая</a>
                                 </li>
                                 <li class="page-item">
-                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if selected_status %}&status={{ selected_status }}{% endif %}{% if selected_vacancy %}&vacancy={{ selected_vacancy }}{% endif %}">Предыдущая</a>
+                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if selected_status %}&status={{ selected_status }}{% endif %}{% if selected_vacancy %}&vacancy={{ selected_vacancy }}{% endif %}{% if selected_date_single %}&date_single={{ selected_date_single }}{% endif %}{% if selected_date_from %}&date_from={{ selected_date_from }}{% endif %}{% if selected_date_to %}&date_to={{ selected_date_to }}{% endif %}">Предыдущая</a>
                                 </li>
                             {% endif %}
 
@@ -147,17 +186,17 @@
                                     </li>
                                 {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
                                     <li class="page-item">
-                                        <a class="page-link" href="?page={{ num }}{% if selected_status %}&status={{ selected_status }}{% endif %}{% if selected_vacancy %}&vacancy={{ selected_vacancy }}{% endif %}">{{ num }}</a>
+                                        <a class="page-link" href="?page={{ num }}{% if selected_status %}&status={{ selected_status }}{% endif %}{% if selected_vacancy %}&vacancy={{ selected_vacancy }}{% endif %}{% if selected_date_single %}&date_single={{ selected_date_single }}{% endif %}{% if selected_date_from %}&date_from={{ selected_date_from }}{% endif %}{% if selected_date_to %}&date_to={{ selected_date_to }}{% endif %}">{{ num }}</a>
                                     </li>
                                 {% endif %}
                             {% endfor %}
 
                             {% if page_obj.has_next %}
                                 <li class="page-item">
-                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if selected_status %}&status={{ selected_status }}{% endif %}{% if selected_vacancy %}&vacancy={{ selected_vacancy }}{% endif %}">Следующая</a>
+                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if selected_status %}&status={{ selected_status }}{% endif %}{% if selected_vacancy %}&vacancy={{ selected_vacancy }}{% endif %}{% if selected_date_single %}&date_single={{ selected_date_single }}{% endif %}{% if selected_date_from %}&date_from={{ selected_date_from }}{% endif %}{% if selected_date_to %}&date_to={{ selected_date_to }}{% endif %}">Следующая</a>
                                 </li>
                                 <li class="page-item">
-                                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if selected_status %}&status={{ selected_status }}{% endif %}{% if selected_vacancy %}&vacancy={{ selected_vacancy }}{% endif %}">Последняя</a>
+                                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if selected_status %}&status={{ selected_status }}{% endif %}{% if selected_vacancy %}&vacancy={{ selected_vacancy }}{% endif %}{% if selected_date_single %}&date_single={{ selected_date_single }}{% endif %}{% if selected_date_from %}&date_from={{ selected_date_from }}{% endif %}{% if selected_date_to %}&date_to={{ selected_date_to }}{% endif %}">Последняя</a>
                                 </li>
                             {% endif %}
                         </ul>
